@@ -1,0 +1,3 @@
+# Build artifacts produced by the base image. Not part of the overlay.
+vendor/
+web/

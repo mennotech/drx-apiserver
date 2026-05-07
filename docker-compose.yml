@@ -1,0 +1,39 @@
+# Reference deployment for drx-apiserver.
+#
+# This compose file is a CONSUMER example: it layers the reference app
+# overlay on top of the reusable drx-drupal-base image. The base image
+# itself is built via the project Makefile (`make base`) or, in
+# production, pulled from the published registry.
+
+services:
+  drx-apiserver:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-drupal-base:dev}
+    image: drx-apiserver:dev
+    ports:
+      - "8088:80"
+    environment:
+      # Site identity
+      DRUPAL_ADMIN_USER: ${DRUPAL_ADMIN_USER:-admin}
+      DRUPAL_ADMIN_PASS: ${DRUPAL_ADMIN_PASS:?Set DRUPAL_ADMIN_PASS in .env before starting the backend}
+      DRUPAL_SITE_NAME: ${DRUPAL_SITE_NAME:-DrX API Server}
+      # Storage (SQLite default; override via .env to use Postgres/MySQL)
+      DRUPAL_DB_DRIVER: ${DRUPAL_DB_DRIVER:-sqlite}
+      DRUPAL_SQLITE_PATH: /var/drupal-db/db.sqlite
+      # Public URLs / CORS
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8088}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # API policy: this reference app opts into JSON:API write mode via
+      # its post-config-import.d hook; the base image stays read-only.
+    volumes:
+      - backend_drupal_files:/var/www/html/web/sites/default/files
+      - backend_drupal_db:/var/drupal-db
+    restart: unless-stopped
+
+volumes:
+  backend_drupal_files:
+  backend_drupal_db:

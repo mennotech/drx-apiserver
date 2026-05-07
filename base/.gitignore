@@ -1,0 +1,3 @@
+# Vendor and Drupal scaffold are produced at build time.
+vendor/
+web/

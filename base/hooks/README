@@ -1,0 +1,11 @@
+Place shell scripts here to extend Drupal bootstrap behaviour. Files are
+sourced in lexical order from inside the orchestrator and inherit helper
+functions defined in ${DRX_LIB_DIR}/common.sh (e.g. drx::drush, drx::log).
+Hook files do not need to be executable.
+
+Lifecycle directories:
+  pre-bootstrap.d/       Before any Drupal action.
+  post-install.d/        After Drupal site install / verification.
+  post-config-import.d/  After config:import succeeds.
+  post-modules.d/        After base + extra module enablement.
+  post-bootstrap.d/      Just before Apache starts.

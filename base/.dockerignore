@@ -1,0 +1,8 @@
+.git
+.gitignore
+.dockerignore
+README.md
+hooks/**/*.md
+**/.DS_Store
+vendor/
+web/
