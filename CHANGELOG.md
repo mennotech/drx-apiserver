@@ -17,12 +17,9 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
-### Fixed
-- `.github/workflows/base-image.yml`: bump Trivy action pin from the
-  non-existent `aquasecurity/trivy-action@0.24.0` to
-  `aquasecurity/trivy-action@v0.36.0` (also adopts the project's
-  required `v`-prefixed tag scheme post supply-chain advisory). The
-  previous pin caused every workflow run to fail at "Set up job".
+_none_
+
+---
 
 ---
 
@@ -71,11 +68,20 @@ commit.
 
 #### Build orchestration
 - [Makefile](Makefile) with local targets: `base`, `app`, `up`, `down`,
-  `smoke`, `clean`. Overridable variables: `BASE_IMAGE`, `APP_IMAGE`,
-  `SMOKE_PORT`, `VERSION`, `VCS_REF`, `BUILD_DATE`.
+  `smoke`, `scan`, `verify`, `clean`. Overridable variables:
+  `BASE_IMAGE`, `APP_IMAGE`, `SMOKE_PORT`, `VERSION`, `VCS_REF`,
+  `BUILD_DATE`, `TRIVY_VERSION`, `TRIVY_SEVERITY`.
 - `make smoke` boots the base image and waits for the container's
   healthcheck to report `healthy` via `docker inspect`, with
   fail-fast on early container exit.
+- `make scan` runs the **same** Trivy gates CI runs
+  (`severity: CRITICAL,HIGH`, `ignore-unfixed`, `exit-code: 1`)
+  against the locally-built base image via the official
+  `aquasec/trivy` OCI image. No host install required; vulnerability
+  DB cached under `~/.cache/trivy`. `TRIVY_VERSION` /
+  `TRIVY_SEVERITY` keep the local gate in lock-step with the workflow
+  so they cannot drift.
+- `make verify` is the recommended pre-push gate; chains `smoke` + `scan`.
 - [docker-compose.yml](docker-compose.yml) recast as a **documented
   consumer example** that layers the reference overlay on top of
   `${DRX_BASE_IMAGE:-drx-drupal-base:dev}`; no longer the product
@@ -99,6 +105,16 @@ commit.
 - `Makefile` `smoke` target: configurable `SMOKE_PORT`, health-driven
   wait via `docker inspect` (instead of curling the app), and
   fail-fast when the container exits early.
+- `.github/workflows/base-image.yml`: set `hide-progress: true` on the
+  Trivy step so DB-download progress bars no longer flood CI logs.
+
+### Fixed
+
+- `.github/workflows/base-image.yml`: pin Trivy action to
+  `aquasecurity/trivy-action@v0.36.0`. The originally-committed pin
+  (`@0.24.0`) does not exist upstream and caused every workflow run
+  to fail at "Set up job"; the upstream project also requires the
+  `v`-prefixed tag scheme after their supply-chain advisory.
 
 ### Removed
 

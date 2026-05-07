@@ -102,6 +102,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # .so libraries that those extensions link against.
 RUN set -eux; \
     apt-get update; \
+    # Pull all available security/bugfix updates for packages already
+    # present in the upstream PHP base image (notably apache2*) so the
+    # published image starts from the latest patched state at build time.
+    apt-get upgrade -y --no-install-recommends; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -116,6 +120,11 @@ RUN set -eux; \
         libzip4 \
         libpq5 \
         tini; \
+    # linux-libc-dev ships in the upstream PHP base image as a build-time
+    # dependency; it carries a long tail of kernel CVEs that never apply
+    # at runtime (no kernel runs inside the container). Purge it.
+    apt-get purge -y --auto-remove linux-libc-dev || true; \
+    apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
 # Bring compiled PHP extensions and their config in from the builder stage.

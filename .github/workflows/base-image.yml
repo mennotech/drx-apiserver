@@ -116,6 +116,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          hide-progress: true
 
       - name: Upload scan results
         if: always()

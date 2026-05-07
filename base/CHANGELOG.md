@@ -106,3 +106,14 @@ tags (`X.Y`, `X`, `latest`) are not moved by pre-releases — pin to
 - Builder stage now installs `libpq-dev` so the `pdo_pgsql` PHP
   extension compiles successfully (`libpq5` alone at runtime is
   insufficient at build time).
+
+### Security
+- Runtime stage runs `apt-get upgrade` against the upstream
+  `php:8.3-apache-bookworm` image to pull current Debian security
+  updates at build time (notably for `apache2*` packages).
+- Runtime stage purges `linux-libc-dev` after PHP extension copy
+  completes; kernel headers are a build-time artifact of the upstream
+  PHP image and are never executed at runtime, but were the source of
+  ~90 unfixed/late-fixed kernel CVE alerts in the published image's
+  vulnerability scan. Removing them eliminates that noise without
+  touching anything reachable in the runtime contract.
