@@ -17,6 +17,13 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Fixed
+- `.github/workflows/base-image.yml`: bump Trivy action pin from the
+  non-existent `aquasecurity/trivy-action@0.24.0` to
+  `aquasecurity/trivy-action@v0.36.0` (also adopts the project's
+  required `v`-prefixed tag scheme post supply-chain advisory). The
+  previous pin caused every workflow run to fail at "Set up job".
+
 ---
 
 ## [2026-05-07] (drx-drupal-base v0.0.1-rc1)
