@@ -9,6 +9,7 @@
 
 BASE_IMAGE ?= drx-drupal-base:dev
 APP_IMAGE  ?= drx-apiserver:dev
+SMOKE_PORT ?= 8089
 VERSION    ?= 0.0.0-dev
 VCS_REF    := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -36,13 +37,16 @@ smoke: base
 	@docker rm -f drx-smoke >/dev/null 2>&1 || true
 	docker run --rm -d --name drx-smoke \
 		-e DRUPAL_ADMIN_PASS=smoke-password \
-		-p 8089:80 $(BASE_IMAGE)
+		-p $(SMOKE_PORT):80 $(BASE_IMAGE)
 	@echo "Waiting for healthcheck..."
 	@for i in $$(seq 1 60); do \
-		if curl -fsS http://127.0.0.1:8089/user/login_status?_format=json >/dev/null 2>&1; then \
+		status=$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' drx-smoke 2>/dev/null || echo missing); \
+		if [ "$$status" = "healthy" ]; then \
 			echo "ok after $${i}s"; docker rm -f drx-smoke >/dev/null; exit 0; fi; \
+		if [ "$$status" = "exited" ] || [ "$$status" = "dead" ] || [ "$$status" = "missing" ]; then \
+			echo "smoke failed early (container status: $$status)"; docker logs drx-smoke || true; docker rm -f drx-smoke >/dev/null 2>&1 || true; exit 1; fi; \
 		sleep 2; done; \
-	echo "smoke failed"; docker logs drx-smoke; docker rm -f drx-smoke >/dev/null; exit 1
+	echo "smoke failed"; docker logs drx-smoke || true; docker rm -f drx-smoke >/dev/null 2>&1 || true; exit 1
 
 clean:
 	docker compose down -v 2>/dev/null || true

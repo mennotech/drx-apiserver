@@ -39,7 +39,8 @@ RUN set -eux; \
         libicu-dev \
         libxml2-dev \
         libzip-dev \
-        libsqlite3-dev; \
+        libsqlite3-dev \
+        libpq-dev; \
     rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
