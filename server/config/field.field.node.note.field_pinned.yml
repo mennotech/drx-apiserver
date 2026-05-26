@@ -1,0 +1,19 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_pinned
+    - node.type.note
+id: node.note.field_pinned
+field_name: field_pinned
+entity_type: node
+bundle: note
+label: Pinned
+description: 'Section: Note Content'
+required: false
+translatable: false
+default_value: {}
+default_value_callback: ''
+settings:
+  display_label: true
+field_type: boolean

@@ -17,7 +17,8 @@
         "drupal/core-composer-scaffold": "^10.3",
         "drupal/core-recommended": "^10.3",
         "drupal/jsonapi_extras": "^3.25",
-        "drush/drush": "^12.5"
+        "drush/drush": "^12.5",
+        "twig/twig": "^3.26"
     },
     "config": {
         "allow-plugins": {
@@ -28,7 +29,14 @@
             "phpstan/extension-installer": true
         },
         "sort-packages": true,
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "policy": {
+            "audit": {
+                "ignore": [
+                    "PKSA-dwsq-ppd2-mb1x"
+                ]
+            }
+        }
     },
     "extra": {
         "drupal-scaffold": {

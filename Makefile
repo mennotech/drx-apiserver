@@ -16,6 +16,18 @@ VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# Container engine selection. Defaults to docker; set CONTAINER_ENGINE=podman
+# to drive the same targets through rootless or rootful Podman. COMPOSE is
+# split out so users can pair `podman` with whichever compose front-end they
+# have available (`podman compose`, `podman-compose`, ...).
+#
+# `make scan` is engine-agnostic by design: it pipes
+# `$(CONTAINER_ENGINE) save` into Trivy on stdin, so no container socket
+# needs to be mounted or auto-detected. Junior devs can run
+# `make verify CONTAINER_ENGINE=podman` with no other configuration.
+CONTAINER_ENGINE  ?= docker
+COMPOSE           ?= $(CONTAINER_ENGINE) compose
+
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
@@ -23,7 +35,7 @@ TRIVY_SEVERITY ?= CRITICAL,HIGH
 .PHONY: base app up down smoke scan verify clean
 
 base:
-	docker build \
+	$(CONTAINER_ENGINE) build \
 		--tag $(BASE_IMAGE) \
 		--build-arg DRX_BASE_VERSION=$(VERSION) \
 		--build-arg DRX_BASE_VCS_REF=$(VCS_REF) \
@@ -31,51 +43,71 @@ base:
 		./base
 
 app: base
-	DRX_BASE_IMAGE=$(BASE_IMAGE) docker compose build
+	DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) build
 
 up: app
-	docker compose up -d
+	$(COMPOSE) up -d
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
+# The healthcheck script is invoked directly via `$(CONTAINER_ENGINE) exec`
+# rather than read from `.State.Health.Status`, so this target works the
+# same under Docker and under rootless Podman (which does not run
+# HEALTHCHECK timers automatically).
 smoke: base
-	@docker rm -f drx-smoke >/dev/null 2>&1 || true
-	docker run --rm -d --name drx-smoke \
+	@$(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null 2>&1 || true
+	$(CONTAINER_ENGINE) run --rm -d --name drx-smoke \
 		-e DRUPAL_ADMIN_PASS=smoke-password \
 		-p $(SMOKE_PORT):80 $(BASE_IMAGE)
 	@echo "Waiting for healthcheck..."
 	@for i in $$(seq 1 60); do \
-		status=$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' drx-smoke 2>/dev/null || echo missing); \
-		if [ "$$status" = "healthy" ]; then \
-			echo "ok after $${i}s"; docker rm -f drx-smoke >/dev/null; exit 0; fi; \
-		if [ "$$status" = "exited" ] || [ "$$status" = "dead" ] || [ "$$status" = "missing" ]; then \
-			echo "smoke failed early (container status: $$status)"; docker logs drx-smoke || true; docker rm -f drx-smoke >/dev/null 2>&1 || true; exit 1; fi; \
+		if ! $(CONTAINER_ENGINE) inspect drx-smoke >/dev/null 2>&1; then \
+			echo "smoke failed early (container gone)"; \
+			$(CONTAINER_ENGINE) logs drx-smoke 2>/dev/null || true; exit 1; fi; \
+		if $(CONTAINER_ENGINE) exec drx-smoke /usr/local/bin/drx-healthcheck >/dev/null 2>&1; then \
+			echo "ok after $${i}s"; $(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null; exit 0; fi; \
 		sleep 2; done; \
-	echo "smoke failed"; docker logs drx-smoke || true; docker rm -f drx-smoke >/dev/null 2>&1 || true; exit 1
+	echo "smoke failed"; $(CONTAINER_ENGINE) logs drx-smoke || true; $(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null 2>&1 || true; exit 1
 
 # Run Trivy with the same gating policy as CI:
 #   - severity: CRITICAL,HIGH
 #   - ignore-unfixed: true       (only fail on issues with an upstream fix)
 #   - exit-code: 1 on findings
-# Trivy is run via its official OCI image so contributors don't need to install
-# the binary; the image and DB are cached in $$HOME/.cache/trivy.
+# Trivy is run via its official OCI image so contributors don't need to
+# install the binary; the vulnerability DB is cached under
+# $$HOME/.cache/trivy. The image to scan is delivered to Trivy as a tar
+# saved by `$(CONTAINER_ENGINE) save` and mounted via `--input`
 scan: base
+	@if ! $(CONTAINER_ENGINE) info >/dev/null 2>&1; then \
+		echo "ERROR: $(CONTAINER_ENGINE) API is not reachable"; \
+		if [ "$(CONTAINER_ENGINE)" = "podman" ]; then \
+			echo "Hint: ensure Podman is running:"; \
+			echo "  macOS / Windows:  podman machine start"; \
+			echo "  Linux (rootless): systemctl --user start podman.socket"; \
+			echo "  Linux (rootful):  sudo systemctl start podman.socket"; \
+		fi; \
+		exit 1; \
+	fi
 	@mkdir -p $${HOME}/.cache/trivy
-	docker run --rm \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $${HOME}/.cache/trivy:/root/.cache/ \
-		aquasec/trivy:$(TRIVY_VERSION) image \
-			--severity $(TRIVY_SEVERITY) \
-			--ignore-unfixed \
-			--exit-code 1 \
-			--no-progress \
-			$(BASE_IMAGE)
+	@TMP=$$(mktemp -d) && \
+		trap 'rm -rf "$$TMP"' EXIT && \
+		echo "Saving $(BASE_IMAGE) to $$TMP/image.tar" && \
+		$(CONTAINER_ENGINE) save -o "$$TMP/image.tar" $(BASE_IMAGE) && \
+		$(CONTAINER_ENGINE) run --rm \
+			-v "$$TMP:/scan:ro" \
+			-v "$${HOME}/.cache/trivy:/root/.cache/" \
+			aquasec/trivy:$(TRIVY_VERSION) image \
+				--input /scan/image.tar \
+				--severity $(TRIVY_SEVERITY) \
+				--ignore-unfixed \
+				--exit-code 1 \
+				--no-progress
 
 # Minimum local check before `git push`. Mirrors the CI gates.
 verify: smoke scan
 	@echo "verify ok"
 
 clean:
-	docker compose down -v 2>/dev/null || true
-	-docker rmi $(APP_IMAGE) $(BASE_IMAGE)
+	$(COMPOSE) down -v 2>/dev/null || true
+	-$(CONTAINER_ENGINE) rmi $(APP_IMAGE) $(BASE_IMAGE)

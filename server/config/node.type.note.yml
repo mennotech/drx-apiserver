@@ -1,0 +1,12 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+name: Note
+type: note
+description: Simple notes content for the drx-apiserver reference deployment. Demonstrates how a downstream consumer of drx-drupal-base can ship a working content model on first boot by committing the Drupal config scaffold generated from this schema by drx-schema.
+help: ''
+new_revision: false
+preview_mode: 1
+display_submitted: false

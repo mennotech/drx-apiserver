@@ -10,6 +10,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Security
+- Patched `twig/twig` from `v3.22.2` to `v3.26.0` to remediate
+  `CVE-2026-46633` (CRITICAL — PHP code injection via `{% use %}`
+  template name) and `CVE-2026-46640` (HIGH — arbitrary PHP execution
+  via `_self.(<string>)` macro-reference compilation). The bump
+  required updating `drupal/core-recommended` from `10.6.8` to
+  `10.6.9` (which widens its `twig/twig` constraint from `~3.22.0` to
+  `^3.26.0`); a direct `twig/twig: ^3.26` require was added to
+  `base/composer.json` to lock in the floor. `config.policy.audit.ignore`
+  was added for `PKSA-dwsq-ppd2-mb1x` (a transitive
+  `symfony/polyfill-intl-idn` advisory) so the lock can resolve;
+  Trivy remains the authoritative security gate.
+
+### Changed
+- **BREAKING:** `DRUPAL_INSTALL_PROFILE` now defaults to `minimal` (was
+  `standard`). The `standard` profile pre-creates an Article content
+  type, a Tags taxonomy, and a `field_tags` field storage of type
+  `entity_reference` on `node`, all of which are foreign to an
+  API-first base image and collide with downstream overlays that try
+  to define their own `field_tags`. Minimal installs leave field-name
+  space, content types, and taxonomies entirely to the consumer.
+  Consumers that rely on `standard`'s scaffolding must set
+  `DRUPAL_INSTALL_PROFILE=standard` explicitly. Existing sites already
+  installed against `standard` are unaffected — the profile is only
+  consulted on first install.
+
 ## [0.0.1-rc1] - 2026-05-07
 
 First public preview of `drx-drupal-base`. The runtime contract is

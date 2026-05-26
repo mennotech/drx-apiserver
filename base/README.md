@@ -78,7 +78,7 @@ All variables are optional except where marked.
 | `DRUPAL_ADMIN_USER`       | `admin`      |                                                        |
 | `DRUPAL_ADMIN_PASS`       | _(unset)_    | **Required** before first install.                     |
 | `DRUPAL_SITE_NAME`        | `Drupal`     | Used only at first install.                            |
-| `DRUPAL_INSTALL_PROFILE`  | `standard`   | Any profile present in the image is valid.             |
+| `DRUPAL_INSTALL_PROFILE`  | `minimal`    | Any profile present in the image is valid. `minimal` keeps the base neutral; set `standard` to opt into Drupal's default Article/Tags/comment scaffolding. |
 | `DRUPAL_HOSTNAME`         | _(derived)_  | Overrides Apache `ServerName` and trusted-host derivation. |
 
 ### Public URLs and CORS

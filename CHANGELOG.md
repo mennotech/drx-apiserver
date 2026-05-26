@@ -17,7 +17,71 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
-_none_
+### Added
+
+#### Podman compatibility
+- `Makefile` now honours `CONTAINER_ENGINE` (default `docker`) and
+  `COMPOSE` (default `$(CONTAINER_ENGINE) compose`), so all local
+  targets — `base`, `app`, `up`, `down`, `smoke`, `scan`, `verify`,
+  `clean` — can be driven through Docker or rootless/rootful Podman
+  without editing the file. Typical invocation:
+  `make verify CONTAINER_ENGINE=podman`.
+- `make scan` is socket-free by design: instead of mounting a Docker /
+  Podman API socket into the Trivy container, it exports the local
+  image with `$(CONTAINER_ENGINE) save -o` into a host tempdir,
+  mounts the tempdir read-only into Trivy, and points
+  `--input /scan/image.tar` at the tarball. This sidesteps the
+  rootless-socket, `podman machine` (macOS / Windows), and userns
+  permission edge cases entirely — the scan path is identical across
+  engines and platforms.
+- `make scan` performs an engine-reachability preflight
+  (`$(CONTAINER_ENGINE) info`) and emits actionable hints
+  (`podman machine start`, `systemctl --user start podman.socket`)
+  when the engine is not running, instead of letting the underlying
+  command fail with an opaque error.
+- `make smoke` invokes the healthcheck script via
+  `$(CONTAINER_ENGINE) exec` rather than relying on
+  `.State.Health.Status`, so it works identically under Docker and
+  rootless Podman (which does not run `HEALTHCHECK` timers
+  automatically).
+- [README.md](README.md) updated with the Podman invocation pattern.
+- CI continues to run the Docker path only; Podman support is
+  contributor-side and not yet exercised by the publish pipeline.
+
+#### Reference Notes application
+- [server/](server/) gained a working "Notes" reference content model
+  that ships end-to-end on first boot, demonstrating how a downstream
+  consumer of `drx-drupal-base` can deliver a JSON:API-ready data
+  model with no manual post-install steps:
+  - [server/schema/notes.yml](server/schema/notes.yml): source-of-truth
+    `drx-schema` YAML defining a `note` bundle with `body`, `status`
+    (`draft|published|archived`), `pinned`, `due_date`, `note_tags`
+    (multi-value string), and `category` fields, grouped into Content
+    and Tags-and-Metadata sections.
+  - [server/config/](server/config/): generated Drupal config scaffold
+    (node type, field storages, field instances, form display, view
+    display) committed alongside the schema so the runtime image does
+    not depend on PowerShell or the generator. Regeneration steps are
+    documented in [server/README.md](server/README.md#regenerating-config-from-the-schema).
+  - [server/hooks/post-config-import.d/10-jsonapi-write-mode.sh](server/hooks/post-config-import.d/10-jsonapi-write-mode.sh):
+    project opt-in to JSON:API write mode (the base image remains
+    read-only by default).
+  - [server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh):
+    idempotent seed hook that creates three example Note nodes the
+    first time the site boots and records a state marker so subsequent
+    boots are no-ops.
+  - [server/hooks/post-modules.d/10-enable-navigation.sh](server/hooks/post-modules.d/10-enable-navigation.sh):
+    enables the experimental Navigation module so the example admin UI
+    is usable for evaluators.
+- [server/README.md](server/README.md) describes the schema → config →
+  hooks pipeline, lists the field set, and documents the regeneration
+  procedure.
+
+### Changed
+- Field `tags` in [server/schema/notes.yml](server/schema/notes.yml)
+  renamed to `note_tags` (generates `field_note_tags`) for clarity and
+  to defensively avoid any future collision with profiles that pre-create
+  a `field_tags` storage.
 
 ---
 

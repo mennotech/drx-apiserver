@@ -13,7 +13,7 @@ FROM ${BASE_IMAGE}
 COPY --chown=www-data:www-data modules/  /var/www/html/web/modules/custom/
 
 # Config sync payload imported on boot via drx-init.
-COPY --chown=www-data:www-data config/   /var/www/html/config/
+COPY --chown=www-data:www-data config/   /var/www/html/config/sync/
 
 # Lifecycle hooks. Each file is executable and runs in lexical order.
 COPY --chmod=0755 hooks/                 /etc/drx/hooks/
