@@ -2,10 +2,10 @@ langcode: en
 status: true
 dependencies:
   config:
-    - field.storage.node.field_tags
+    - field.storage.node.field_note_tags
     - node.type.note
-id: node.note.field_tags
-field_name: field_tags
+id: node.note.field_note_tags
+field_name: field_note_tags
 entity_type: node
 bundle: note
 label: Tags

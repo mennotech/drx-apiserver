@@ -17,6 +17,18 @@ fi
 drx::log "drx-apiserver: seeding example notes"
 
 drx::drush php:eval '
+// Pick a text format that actually exists. plain_text is shipped by the
+// filter module and is the safe universal default; fall back to whatever
+// the first enabled format is so this seed survives profiles that strip
+// it (e.g. heavily customised installs).
+$format_storage = \Drupal::entityTypeManager()->getStorage("filter_format");
+$format = $format_storage->load("plain_text");
+if (!$format || !$format->status()) {
+  $candidates = $format_storage->loadByProperties(["status" => TRUE]);
+  $format = $candidates ? reset($candidates) : NULL;
+}
+$format_id = $format ? $format->id() : "plain_text";
+
 $nodes = [
   [
     "title" => "Welcome to drx-apiserver",
@@ -48,11 +60,11 @@ foreach ($nodes as $data) {
   $node = \Drupal\node\Entity\Node::create([
     "type" => "note",
     "title" => $data["title"],
-    "field_body" => ["value" => $data["body"], "format" => "basic_html"],
+    "field_body" => ["value" => $data["body"], "format" => $format_id],
     "field_status" => $data["status_val"],
     "field_pinned" => $data["pinned"] ? 1 : 0,
     "field_category" => $data["category"],
-    "field_tags" => $data["tags"],
+    "field_note_tags" => $data["tags"],
   ]);
   $node->save();
 }

@@ -7,7 +7,7 @@ dependencies:
     - field.field.node.note.field_status
     - field.field.node.note.field_pinned
     - field.field.node.note.field_due_date
-    - field.field.node.note.field_tags
+    - field.field.node.note.field_note_tags
     - field.field.node.note.field_category
   module:
     - node
@@ -46,7 +46,7 @@ content:
     region: content
     settings: {}
     third_party_settings: {}
-  field_tags:
+  field_note_tags:
     type: string_textfield
     weight: 4
     region: content
