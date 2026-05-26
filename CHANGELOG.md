@@ -17,6 +17,8 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+## [2026-05-26] (drx-drupal-base v0.0.1-rc2)
+
 ### Added
 
 #### Drupal-version informational tags
@@ -90,6 +92,20 @@ versioned — entries are grouped by the date of the corresponding
   - [server/hooks/post-modules.d/10-enable-navigation.sh](server/hooks/post-modules.d/10-enable-navigation.sh):
     enables the experimental Navigation module so the example admin UI
     is usable for evaluators.
+  - [server/hooks/post-install.d/05-enable-views-and-theme.sh](server/hooks/post-install.d/05-enable-views-and-theme.sh):
+    enables `views`, `datetime`, `options`, `text` (so the imported
+    field types resolve) and installs + activates the Claro admin
+    theme before config import runs.
+  - [server/hooks/post-modules.d/20-enable-views-ui.sh](server/hooks/post-modules.d/20-enable-views-ui.sh):
+    enables the `views_ui` module so the seeded view is editable from
+    the admin UI.
+  - [server/hooks/post-config-import.d/30-set-front-page.sh](server/hooks/post-config-import.d/30-set-front-page.sh):
+    points `system.site.page.front` at `/notes` so the front page
+    serves the Notes listing on first boot.
+  - [server/config/views.view.notes.yml](server/config/views.view.notes.yml):
+    Notes listing view (path `/notes`, title + created + body fields,
+    filters `status=1` + `bundle=note`, sorted by `field_pinned` DESC
+    then `created` DESC, 20 per page).
 - [server/README.md](server/README.md) describes the schema → config →
   hooks pipeline, lists the field set, and documents the regeneration
   procedure.

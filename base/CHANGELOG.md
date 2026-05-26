@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.1-rc2] - 2026-05-26
+
 ### Fixed
 - Bootstrap no longer crash-loops when `drush config:import --partial`
   reports a non-zero exit. `drx::config_import::run` previously ended
