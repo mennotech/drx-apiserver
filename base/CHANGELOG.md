@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- Bootstrap no longer crash-loops when `drush config:import --partial`
+  reports a non-zero exit. `drx::config_import::run` previously ended
+  with a `[ "$mode" = "full" ] && drx::die …` short-circuit, which
+  surfaced as a non-zero return whenever `mode != full` and tripped
+  `set -e` in `init.sh`, aborting bootstrap before `exec "$@"` and
+  causing the container to exit and restart in a tight loop. The
+  function now uses an explicit `if`/`then`/`fi` block and always
+  returns `0` in partial mode; the existing `drx::warn` log line
+  remains the failure signal.
+
+### Changed
+- `DRUPAL_BASE_MODULES` now defaults to
+  `config jsonapi serialization basic_auth rest` (was
+  `jsonapi serialization basic_auth rest`). Drupal core's `config`
+  module is required by `drush config:import --partial`, which the
+  default config-import mode uses; without it, the import would log
+  `Enable the config module in order to use the --partial option.` and
+  silently drop site config. Consumers overriding `DRUPAL_BASE_MODULES`
+  should add `config` to their list (or set
+  `DRUPAL_CONFIG_IMPORT_MODE=full`, which does not depend on the
+  module).
+
 ### Security
 - Patched `twig/twig` from `v3.22.2` to `v3.26.0` to remediate
   `CVE-2026-46633` (CRITICAL — PHP code injection via `{% use %}`

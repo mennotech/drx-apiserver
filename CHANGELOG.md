@@ -19,6 +19,23 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Added
 
+#### Drupal-version informational tags
+- `.github/workflows/base-image.yml` now extracts the resolved
+  `drupal/core` version from `base/composer.lock` at build time and
+  publishes a parallel family of informational tags alongside the
+  existing contract-version tags:
+  - `drupal-A.B.C` (immutable, published on every release including
+    `-rcN` pre-releases),
+  - `drupal-A.B` and `drupal-A` (floating, published on non-prerelease
+    releases only).
+  No `drupal-*` tags are pushed for `main` builds; the bundled Drupal
+  version is exposed instead via the new
+  `org.mennotech.drx.drupal.version` OCI label, which is set on every
+  image regardless of trigger.
+- `RELEASES.md → Tag policy` documents the two parallel tag families
+  (contract-version and Drupal-version) and the recommended pinning
+  strategies for each.
+
 #### Podman compatibility
 - `Makefile` now honours `CONTAINER_ENGINE` (default `docker`) and
   `COMPOSE` (default `$(CONTAINER_ENGINE) compose`), so all local

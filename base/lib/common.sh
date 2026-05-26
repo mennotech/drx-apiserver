@@ -32,7 +32,7 @@ export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-}"
 
 # Module/API contract. Secure-by-default: read-only JSON:API.
-export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-jsonapi serialization basic_auth rest}"
+export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"
 export DRUPAL_EXTRA_MODULES="${DRUPAL_EXTRA_MODULES:-}"
 export DRUPAL_JSONAPI_READ_ONLY="${DRUPAL_JSONAPI_READ_ONLY:-1}"
 

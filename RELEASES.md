@@ -56,7 +56,10 @@ minor** releases unless they break the documented contract.
 
 Tags are derived automatically by
 [.github/workflows/base-image.yml](.github/workflows/base-image.yml) via
-`docker/metadata-action`:
+`docker/metadata-action`. Two parallel families are published from the
+same image manifests:
+
+### Contract-version tags (SemVer of the runtime contract)
 
 | Trigger                 | Published tags                              | Mutability | Recommended use                 |
 | ----------------------- | ------------------------------------------- | ---------- | ------------------------------- |
@@ -65,9 +68,27 @@ Tags are derived automatically by
 | Push to `main`          | `edge`                                      | Floating   | Integration / smoke only.       |
 | Pull request            | `pr-<NNN>` (built, **not** pushed)          | n/a        | Internal CI verification.       |
 
-**Production guidance**: pin to an immutable `X.Y.Z` tag and update via
-explicit version bumps. Avoid `latest`, `X.Y`, `X`, and `edge` in
-production.
+### Drupal-version tags (informational, derived from `base/composer.lock`)
+
+Published alongside contract tags so consumers can pin on the bundled
+Drupal version instead of (or in addition to) the contract version.
+`A.B.C` is the exact `drupal/core` version resolved in the lockfile at
+publish time.
+
+| Trigger                 | Published tags                              | Mutability | Recommended use                          |
+| ----------------------- | ------------------------------------------- | ---------- | ---------------------------------------- |
+| GitHub Release `vX.Y.Z` | `drupal-A.B.C`, `drupal-A.B`, `drupal-A`    | `drupal-A.B.C` immutable; others floating | Pin Drupal minor; let contract float forward on rebuild. |
+| GitHub Release `vX.Y.Z-rcN` | `drupal-A.B.C`                          | Immutable  | Pre-production validation.               |
+| Push to `main`          | none                                        | n/a        | Inspect `org.mennotech.drx.drupal.version` OCI label instead. |
+
+Each published image also carries the Drupal version as an OCI label
+(`org.mennotech.drx.drupal.version`) regardless of trigger, so the
+shipped Drupal version is always discoverable via `docker inspect`.
+
+**Production guidance**: pin to an immutable tag — either contract
+(`X.Y.Z`) or Drupal (`drupal-A.B.C`) — and update via explicit version
+bumps. Avoid `latest`, `X.Y`, `X`, `drupal-A.B`, `drupal-A`, and `edge`
+in production.
 
 Each published tag includes:
 

@@ -113,7 +113,7 @@ All variables are optional except where marked.
 
 | Variable                       | Default                                          | Notes                                                                     |
 | ------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| `DRUPAL_BASE_MODULES`          | `jsonapi serialization basic_auth rest`          | Enabled before config import.                                             |
+| `DRUPAL_BASE_MODULES`          | `config jsonapi serialization basic_auth rest`   | Enabled before config import. `config` is required for `drush config:import --partial`. |
 | `DRUPAL_EXTRA_MODULES`         | _(empty)_                                        | Enabled after config import. Use for modules with config dependencies.    |
 | `DRUPAL_CONFIG_SYNC_DIR`       | `/var/www/html/config/sync`                      | Ignored if directory empty.                                               |
 | `DRUPAL_CONFIG_IMPORT_MODE`    | `partial`                                        | Set to `full` to fail boot on missing dependencies.                       |

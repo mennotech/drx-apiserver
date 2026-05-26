@@ -32,6 +32,13 @@ drx::config_import::run() {
         drx::log "Config import complete"
     else
         drx::warn "Config import failed; not updating hash"
-        [ "${mode}" = "full" ] && drx::die "Config import failed in full mode"
+        if [ "${mode}" = "full" ]; then
+            drx::die "Config import failed in full mode"
+        fi
     fi
+    # Always return success in partial mode; the warning above is the
+    # signal for downstream tooling. Returning the result of a trailing
+    # short-circuit (e.g. `[ x = y ] && drx::die`) would surface as a
+    # non-zero exit and `set -e` in the caller would abort bootstrap.
+    return 0
 }
