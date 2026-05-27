@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/);
 the project follows [Semantic Versioning](https://semver.org/) for the
 base image runtime contract (this top-level changelog is not itself
 versioned — entries are grouped by the date of the corresponding
-`drx-drupal-base` release).
+`drx-apiserver` release).
 
 ---
 
@@ -33,8 +33,16 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Changed
 
+#### Image naming and publish model
+- Canonical published image name is now `drx-apiserver`
+  (`ghcr.io/mennotech/drx-apiserver`). Workflows, local defaults, and
+  operator-facing docs were updated accordingly.
+- Release/policy docs now explicitly state that `server/` is a
+  non-published reference overlay used for local development and
+  proof-of-concept flows.
+
 #### Base image publish behavior
-- `.github/workflows/base-image.yml` now publishes `drx-drupal-base` to
+- `.github/workflows/base-image.yml` now publishes `drx-apiserver` to
   GHCR only on GitHub Release events. Pushes to `main` still run CI and
   smoke validation, but they no longer publish a branch-derived image
   tag.
@@ -278,7 +286,7 @@ commit.
   fixes) belong in [base/CHANGELOG.md](base/CHANGELOG.md), not here.
 - Group entries under standard Keep a Changelog sections:
   `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
-- When a `drx-drupal-base` release is cut, move the current
-  `[Unreleased]` block under a new `[YYYY-MM-DD] (drx-drupal-base vX.Y.Z)`
+- When a `drx-apiserver` release is cut, move the current
+  `[Unreleased]` block under a new `[YYYY-MM-DD] (drx-apiserver vX.Y.Z)`
   heading so this changelog stays aligned with image releases without
   claiming a separate version of its own.

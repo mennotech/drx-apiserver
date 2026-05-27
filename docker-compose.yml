@@ -1,7 +1,7 @@
 # Reference deployment for drx-apiserver.
 #
 # This compose file is a CONSUMER example: it layers the reference app
-# overlay on top of the reusable drx-drupal-base image. The base image
+# overlay on top of the reusable drx-apiserver base image. The base image
 # itself is built via the project Makefile (`make base`) or, in
 # production, pulled from the published registry.
 
@@ -11,7 +11,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-drupal-base:dev}
+        BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-apiserver:dev}
     image: drx-apiserver:dev
     ports:
       - "8088:80"

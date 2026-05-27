@@ -1,4 +1,4 @@
-# drx-drupal-base
+# drx-apiserver (base image)
 
 A reusable, production-oriented Drupal 10 base image for projects that use
 Drupal as the data + auth + security backend behind a decoupled frontend.
@@ -190,7 +190,7 @@ A non-zero exit from a hook aborts bootstrap.
 ## Extending the image
 
 ```dockerfile
-ARG BASE_IMAGE=ghcr.io/mennotech/drx-drupal-base:0.1.0
+ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
 # Custom modules.
@@ -233,7 +233,7 @@ temporary exact-version overrides at build time:
 ```bash
 docker build \
   --build-arg DRX_APT_SECURITY_OVERRIDES="openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2" \
-  -t drx-drupal-base:dev ./base
+  -t drx-apiserver:dev ./base
 ```
 
 Rules:

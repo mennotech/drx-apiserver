@@ -11,18 +11,14 @@ published, and supported. For runtime release notes, see
 
 | Artifact            | Source           | Registry / Location                                   | Release track |
 | ------------------- | ---------------- | ----------------------------------------------------- | ------------- |
-| `drx-drupal-base`   | [base/](base/)   | `ghcr.io/mennotech/drx-drupal-base`                   | Primary, versioned. |
-| `drx-apiserver` (reference overlay) | [server/](server/) | `ghcr.io/mennotech/drx-apiserver` *(separate publishing pipeline; see below)* | Independent track. |
+| `drx-apiserver` (base image) | [base/](base/) | `ghcr.io/mennotech/drx-apiserver` | Primary, versioned. |
 
 Only **GHCR** is used as a distribution channel. There are no Docker Hub,
 Quay, or mirror publications at this time.
 
-The `server/` overlay is treated as a **separate publishable artifact**
-with its own release track. Its versioning and cadence may diverge from
-the base image; consumers must not assume `server/vX.Y.Z` matches
-`base/vX.Y.Z`. Until a dedicated server publishing workflow is in place,
-treat any `server/` tags as previews; this document will be updated when
-the server pipeline is enabled.
+The `server/` overlay is a **reference consumer only** and is not
+published as a GHCR artifact. It exists for local development, smoke
+validation, and proof-of-concept flows.
 
 ---
 
@@ -201,7 +197,7 @@ Removed / Fixed / Security sections) live in
 3. Open a release PR; merge after review.
 4. Tag the merge commit:
    ```bash
-   git tag -a vX.Y.Z -m "drx-drupal-base vX.Y.Z"
+   git tag -a vX.Y.Z -m "drx-apiserver vX.Y.Z"
    git push origin vX.Y.Z
    ```
 5. Publish a GitHub Release for the tag. The `release: published` event

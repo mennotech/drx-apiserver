@@ -1,6 +1,6 @@
 # Local development orchestration for drx-apiserver.
 #
-# `make base`   — build the reusable drx-drupal-base image locally
+# `make base`   — build the reusable drx-apiserver base image locally
 # `make app`    — build the reference app on top of it
 # `make up`     — bring up the reference app via docker compose
 # `make down`   — stop the reference app
@@ -9,8 +9,8 @@
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make clean`  — remove build artifacts and the local image tags
 
-BASE_IMAGE   ?= drx-drupal-base:dev
-APP_IMAGE    ?= drx-apiserver:dev
+BASE_IMAGE   ?= drx-apiserver:dev
+APP_IMAGE    ?= drx-apiserver-demo:dev
 SMOKE_PORT   ?= 8089
 VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)

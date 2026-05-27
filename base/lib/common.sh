@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# drx-drupal-base : common helpers shared by all bootstrap modules.
+# drx-apiserver base image: common helpers shared by all bootstrap modules.
 # =============================================================================
 
 # Constants -------------------------------------------------------------------

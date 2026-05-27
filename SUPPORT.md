@@ -1,6 +1,6 @@
 # Support Policy
 
-This document defines which `drx-drupal-base` image lines are operationally
+This document defines which `drx-apiserver` image lines are operationally
 supported and how continuous vulnerability monitoring is scoped.
 
 For security reporting and coordinated disclosure, see

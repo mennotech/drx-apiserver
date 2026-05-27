@@ -1,4 +1,4 @@
-# Build, security-scan, and release the reusable drx-drupal-base image.
+# Build, security-scan, and release the reusable drx-apiserver image.
 #
 # Tag conventions (see base/README.md, RELEASES.md):
 #   Contract-version tags (SemVer of the base image runtime contract):
@@ -35,7 +35,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/drx-drupal-base
+  IMAGE_NAME: ${{ github.repository_owner }}/drx-apiserver
 
 jobs:
   build:
@@ -105,7 +105,7 @@ jobs:
             type=raw,value=drupal-${{ steps.drupal.outputs.minor }},enable=${{ github.event_name == 'release' && !contains(github.ref, '-') }}
             type=raw,value=drupal-${{ steps.drupal.outputs.major }},enable=${{ github.event_name == 'release' && !contains(github.ref, '-') }}
           labels: |
-            org.opencontainers.image.title=drx-drupal-base
+            org.opencontainers.image.title=drx-apiserver
             org.opencontainers.image.description=Reusable Drupal 10 base image for decoupled API backends.
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.licenses=GPL-2.0-or-later
@@ -117,7 +117,7 @@ jobs:
           context: ./base
           file: ./base/Dockerfile
           load: true
-          tags: drx-drupal-base:ci
+          tags: drx-apiserver:ci
           build-args: |
             DRX_BASE_VERSION=${{ steps.meta.outputs.version }}
             DRX_BASE_VCS_REF=${{ github.sha }}
@@ -129,7 +129,7 @@ jobs:
         run: |
           docker run --rm -d --name drx-smoke \
             -e DRUPAL_ADMIN_PASS=ci-smoke-password \
-            -p 8080:80 drx-drupal-base:ci
+            -p 8080:80 drx-apiserver:ci
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8080/user/login_status?_format=json >/dev/null; then
               echo "smoke ok after ${i}s"; exit 0
@@ -148,7 +148,7 @@ jobs:
       - name: Trivy gate scan (CRITICAL/HIGH)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: drx-drupal-base:ci
+          image-ref: drx-apiserver:ci
           format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -159,7 +159,7 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: drx-drupal-base:ci
+          image-ref: drx-apiserver:ci
           format: sarif
           output: trivy.sarif
           ignore-unfixed: true

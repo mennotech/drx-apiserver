@@ -23,7 +23,7 @@ if [ "${DRX_DISABLE_INIT:-0}" = "1" ]; then
     exec "$@"
 fi
 
-drx::log "drx-drupal-base ${DRX_BASE_VERSION:-unknown} starting bootstrap"
+drx::log "drx-apiserver ${DRX_BASE_VERSION:-unknown} starting bootstrap"
 
 # shellcheck source=lib/storage.sh
 . "${DRX_LIB_DIR}/storage.sh"

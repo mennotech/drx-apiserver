@@ -6,13 +6,12 @@ first; this file complements those, it does not replace them.
 
 ## What this repository ships
 
-Two distinct artifacts, in two distinct directories, with distinct
-release tracks:
+One published artifact plus one non-published reference overlay:
 
 | Directory   | Artifact                                | Track                                         |
 | ----------- | --------------------------------------- | --------------------------------------------- |
-| [base/](base/)   | `drx-drupal-base` (published to GHCR)   | Primary, versioned. SemVer on runtime contract. |
-| [server/](server/) | Reference overlay consuming the base    | Separate publishable track; preview status.  |
+| [base/](base/)   | `drx-apiserver` base image (published to GHCR) | Primary, versioned. SemVer on runtime contract. |
+| [server/](server/) | Reference overlay consuming the base    | Not published; used for local dev and proof-of-concept flows. |
 
 The base image is **deliberately neutral**. Do not add project-specific
 modules, branding, content types, config payload, deployment platform
@@ -55,7 +54,7 @@ code **and** the relevant doc in the same change. Do not let them drift.
 
 Local commands (see [Makefile](Makefile)):
 
-- `make base` — build `drx-drupal-base:dev` from [base/](base/).
+- `make base` — build `drx-apiserver:dev` from [base/](base/).
 - `make smoke` — boot the base image and wait for the healthcheck to
   report `healthy`. This is the minimum local check before pushing
   changes to `base/`.
