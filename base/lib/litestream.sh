@@ -148,6 +148,24 @@ drx::litestream::restore() {
 }
 
 drx::litestream::exec_wrap() {
-    # Phase 3 will replace this no-op with role-aware exec wrapping.
-    exec "$@"
+    if ! drx::litestream::enabled; then
+        exec "$@"
+    fi
+
+    # litestream's -exec flag takes a single shell command string. Quote
+    # each argument so embedded whitespace / shell metacharacters survive.
+    local cmd=""
+    local arg
+    for arg in "$@"; do
+        cmd+="$(printf '%q ' "$arg")"
+    done
+
+    drx::log "litestream: handing off via 'litestream replicate -exec' (cmd: $*)"
+    # tini (PID 1) -> drx-init -> litestream -> apache2-foreground.
+    # litestream forwards signals to the child and performs a final WAL
+    # checkpoint + replica sync on SIGTERM before exiting, which is the
+    # whole point of wrapping Apache this way.
+    exec litestream replicate \
+        -config "${DRX_LITESTREAM_CONFIG_FILE}" \
+        -exec "${cmd}"
 }

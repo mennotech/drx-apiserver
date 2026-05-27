@@ -45,6 +45,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   (`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, or the
   AWS_*-style equivalents).
 
+### Changed
+- When `DRX_LITESTREAM_ENABLED=1`, the bootstrap final exec is now
+  wrapped by `litestream replicate -config /etc/litestream.yml -exec
+  "<CMD>"` instead of plain `exec "$@"`. The resulting process tree is
+  `tini → drx-init → litestream → <CMD>` (typically Apache). Litestream
+  forwards signals to the wrapped process and performs a final WAL
+  checkpoint + replica sync on graceful shutdown (SIGTERM). When the
+  feature is disabled the exec path is unchanged.
+
 ## [0.0.3-rc3] - 2026-05-27
 
 ### Changed

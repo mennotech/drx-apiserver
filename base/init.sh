@@ -62,4 +62,4 @@ drx::finalize::cache_rebuild
 drx::run_hooks post-bootstrap.d
 
 drx::log "Bootstrap complete; handing off to: $*"
-exec "$@"
+drx::litestream::exec_wrap "$@"
