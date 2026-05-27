@@ -38,10 +38,10 @@ json_scope="${JSON_SEVERITY_SCOPE:-UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL}"
   echo "| UNKNOWN | ${unknown} |"
   echo "| LOW | ${low} |"
   echo "| MEDIUM | ${medium} |"
-  echo "| CRITICAL | ${critical} |"
   echo "| HIGH | ${high} |"
+  echo "| CRITICAL | ${critical} |"
   echo "| TOTAL (all) | ${total_all} |"
-  echo "| TOTAL (high+critical) | ${total_high_critical} |"
+  echo "| HIGH+CRITICAL | ${total_high_critical} |"
 
   if [[ "$total_all" -gt 0 ]]; then
     echo ""
@@ -72,7 +72,7 @@ json_scope="${JSON_SEVERITY_SCOPE:-UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL}"
       | sort_by(-.rank, .vulnerability, .package, .installed)
       | .[:$limit]
       | .[]
-      | "| \(.severity) | \(.vulnerability) | \(.package) | \(.installed) | \(.fixed) | \(.target) | \(.title[0:120])\(if (.title|length) > 120 then \"...\" else \"\" end) |"
+      | "| \(.severity) | \(.vulnerability) | \(.package) | \(.installed) | \(.fixed) | \(.target) | \(.title) |"
     ' "$json_file"
   fi
 } >> "$GITHUB_STEP_SUMMARY"
