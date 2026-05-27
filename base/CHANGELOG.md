@@ -17,9 +17,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `lib/litestream.sh` is sourced by `init.sh`. The feature is **off by
   default**: `drx::litestream::enabled` returns false unless a future
   release wires the activation env vars and `DRX_LITESTREAM_ENABLED=1`
-  is set. No runtime behaviour changes in this release; subsequent
-  releases will add config rendering, restore-on-boot, and writer
-  lifecycle wrapping.
+  is set.
+- Litestream restore-on-boot path. When `DRX_LITESTREAM_ENABLED=1`, the
+  bootstrap renders `/etc/litestream.yml` from env vars and runs
+  `litestream restore` against the configured replica before Drupal
+  install detection. A populated local DB short-circuits the restore
+  under the default `if-empty` policy, so a brand-new deployment falls
+  through to the normal install path when the bucket has no backups
+  yet. Restore policy is controlled by `DRX_LITESTREAM_RESTORE_ON_BOOT`
+  (`if-empty` (default) | `always` | `never`). Replication itself
+  (writer lifecycle wrapping) lands in a subsequent release.
+
+### Runtime contract (new env vars)
+- `DRX_LITESTREAM_ENABLED` (default `0`).
+- `DRX_LITESTREAM_REPLICA_URL` (required when enabled, e.g.
+  `s3://bucket/prefix`).
+- `DRX_LITESTREAM_ENDPOINT` (optional, for MinIO / S3-compatible).
+- `DRX_LITESTREAM_REGION` (default `us-east-1`).
+- `DRX_LITESTREAM_FORCE_PATH_STYLE` (auto: `true` when an endpoint is
+  set, otherwise `false`; override with `true`/`false`).
+- `DRX_LITESTREAM_SYNC_INTERVAL` (default `1s`).
+- `DRX_LITESTREAM_RESTORE_ON_BOOT` (default `if-empty`).
+- `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
+  file already exists at boot it is treated as an operator-supplied
+  override and the auto-render is skipped).
+- Credentials are passed through using litestream-native env vars
+  (`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, or the
+  AWS_*-style equivalents).
 
 ## [0.0.3-rc3] - 2026-05-27
 

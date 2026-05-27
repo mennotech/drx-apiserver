@@ -40,6 +40,30 @@ export DRUPAL_JSONAPI_READ_ONLY="${DRUPAL_JSONAPI_READ_ONLY:-1}"
 # and the BACKEND_URL host are always added.
 export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 
+# Litestream (SQLite backup/restore). Off by default. When enabled, the
+# bootstrap renders /etc/litestream.yml from these vars (unless
+# DRX_LITESTREAM_CONFIG_FILE points at an operator-provided config), runs
+# a restore-before-install on first boot, and (Phase 3+) wraps Apache
+# with `litestream replicate --exec` for ongoing replication.
+#
+# Required when enabled: DRX_LITESTREAM_REPLICA_URL plus credentials
+# in litestream-native env vars (LITESTREAM_ACCESS_KEY_ID,
+# LITESTREAM_SECRET_ACCESS_KEY, or provider equivalents).
+export DRX_LITESTREAM_ENABLED="${DRX_LITESTREAM_ENABLED:-0}"
+export DRX_LITESTREAM_REPLICA_URL="${DRX_LITESTREAM_REPLICA_URL:-}"
+export DRX_LITESTREAM_ENDPOINT="${DRX_LITESTREAM_ENDPOINT:-}"
+export DRX_LITESTREAM_REGION="${DRX_LITESTREAM_REGION:-us-east-1}"
+export DRX_LITESTREAM_FORCE_PATH_STYLE="${DRX_LITESTREAM_FORCE_PATH_STYLE:-}"
+export DRX_LITESTREAM_SYNC_INTERVAL="${DRX_LITESTREAM_SYNC_INTERVAL:-1s}"
+# Restore policy: if-empty (default) | always | never.
+#   if-empty: restore only when the SQLite file is missing or has no tables
+#   always:   restore on every boot (destructive; overwrites local DB)
+#   never:    skip restore entirely (writer adopts existing local DB)
+export DRX_LITESTREAM_RESTORE_ON_BOOT="${DRX_LITESTREAM_RESTORE_ON_BOOT:-if-empty}"
+# Operator escape hatch: if set and the file exists, used verbatim instead
+# of the generated config. The path must be readable inside the container.
+export DRX_LITESTREAM_CONFIG_FILE="${DRX_LITESTREAM_CONFIG_FILE:-/etc/litestream.yml}"
+
 # Logging ---------------------------------------------------------------------
 drx::log()  { printf '[drx] %s\n' "$*" >&2; }
 drx::warn() { printf '[drx] WARN: %s\n' "$*" >&2; }

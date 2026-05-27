@@ -45,6 +45,8 @@ drx::log "drx-apiserver ${DRX_BASE_VERSION:-unknown} starting bootstrap"
 drx::run_hooks pre-bootstrap.d
 
 drx::storage::prepare
+drx::litestream::write_config
+drx::litestream::restore
 drx::settings::write
 drx::services::write
 drx::install::ensure
