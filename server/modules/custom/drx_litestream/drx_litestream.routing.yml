@@ -1,0 +1,41 @@
+drx_litestream.health:
+  path: '/admin/config/drx/litestream'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\HealthController::overview'
+    _title: 'DrX Litestream'
+  requirements:
+    _permission: 'administer drx litestream'
+
+drx_litestream.markers:
+  path: '/admin/config/drx/litestream/markers'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\MarkerController::listPage'
+    _title: 'Point-in-time markers'
+  requirements:
+    _permission: 'administer drx litestream'
+
+drx_litestream.marker_add:
+  path: '/admin/config/drx/litestream/markers/add'
+  defaults:
+    _form: '\Drupal\drx_litestream\Form\MarkerForm'
+    _title: 'Capture marker'
+  requirements:
+    _permission: 'administer drx litestream'
+
+drx_litestream.marker_export:
+  path: '/admin/config/drx/litestream/markers/{id}/export'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\MarkerController::export'
+    _title: 'Export marker'
+  requirements:
+    _permission: 'administer drx litestream'
+    id: \d+
+
+drx_litestream.marker_delete:
+  path: '/admin/config/drx/litestream/markers/{id}/delete'
+  defaults:
+    _form: '\Drupal\drx_litestream\Form\MarkerDeleteForm'
+    _title: 'Delete marker'
+  requirements:
+    _permission: 'administer drx litestream'
+    id: \d+

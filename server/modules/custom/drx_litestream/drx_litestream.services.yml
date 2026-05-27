@@ -1,0 +1,7 @@
+services:
+  drx_litestream.status:
+    class: Drupal\drx_litestream\Service\LitestreamStatus
+    arguments: ['@logger.factory']
+  drx_litestream.markers:
+    class: Drupal\drx_litestream\Service\MarkerManager
+    arguments: ['@database', '@current_user', '@uuid', '@datetime.time']

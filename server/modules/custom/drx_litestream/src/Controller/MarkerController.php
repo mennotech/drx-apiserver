@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Drupal\drx_litestream\Controller;
+
+use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Url;
+use Drupal\drx_litestream\Service\LitestreamStatus;
+use Drupal\drx_litestream\Service\MarkerManager;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+/**
+ * Lists and exports captured markers.
+ */
+class MarkerController extends ControllerBase {
+
+  public function __construct(
+    protected MarkerManager $markers,
+    protected LitestreamStatus $status,
+  ) {}
+
+  public static function create(ContainerInterface $container): static {
+    return new static(
+      $container->get('drx_litestream.markers'),
+      $container->get('drx_litestream.status'),
+    );
+  }
+
+  public function listPage(): array {
+    $rows = [];
+    foreach ($this->markers->loadAll() as $m) {
+      $ops = [
+        '#type' => 'operations',
+        '#links' => [
+          'export' => [
+            'title' => $this->t('Export JSON'),
+            'url' => Url::fromRoute('drx_litestream.marker_export', ['id' => (int) $m['id']]),
+          ],
+          'delete' => [
+            'title' => $this->t('Delete'),
+            'url' => Url::fromRoute('drx_litestream.marker_delete', ['id' => (int) $m['id']]),
+          ],
+        ],
+      ];
+      $rows[] = [
+        $m['label'],
+        $m['txid'] !== '' ? $m['txid'] : '—',
+        $m['captured_at'] ? date('c', (int) $m['captured_at']) : '—',
+        $m['replica_url'] !== '' ? $m['replica_url'] : '—',
+        ['data' => $ops],
+      ];
+    }
+
+    return [
+      '#cache' => ['max-age' => 0],
+      'add' => [
+        '#type' => 'link',
+        '#title' => $this->t('+ Capture marker'),
+        '#url' => Url::fromRoute('drx_litestream.marker_add'),
+        '#attributes' => ['class' => ['button', 'button--primary']],
+        '#prefix' => '<p>',
+        '#suffix' => '</p>',
+      ],
+      'table' => [
+        '#type' => 'table',
+        '#header' => [
+          $this->t('Label'),
+          $this->t('TXID'),
+          $this->t('Captured at'),
+          $this->t('Replica URL'),
+          $this->t('Operations'),
+        ],
+        '#rows' => $rows,
+        '#empty' => $this->t('No markers captured yet.'),
+      ],
+    ];
+  }
+
+  public function export(int $id): Response {
+    $m = $this->markers->load($id);
+    if (!$m) {
+      throw new NotFoundHttpException();
+    }
+
+    $payload = [
+      'schema' => 'drx-litestream-marker/v1',
+      'uuid' => $m['uuid'],
+      'label' => $m['label'],
+      'description' => $m['description'] ?? '',
+      'replica_url' => $m['replica_url'] ?? '',
+      'txid' => $m['txid'] ?? '',
+      'captured_at' => !empty($m['captured_at']) ? date('c', (int) $m['captured_at']) : NULL,
+      'notes' => $m['notes'] ?? '',
+      'dev_restore_hint' => [
+        'shell' => sprintf(
+          'litestream restore -txid %s -o ./dev.sqlite %s',
+          escapeshellarg($m['txid'] ?? ''),
+          escapeshellarg($m['replica_url'] ?? ''),
+        ),
+        'docker_env' => [
+          'DRX_LITESTREAM_ENABLED' => '1',
+          'DRX_LITESTREAM_REPLICA_URL' => $m['replica_url'] ?? '',
+          'DRX_LITESTREAM_RESTORE_ON_BOOT' => 'always',
+          'DRX_LITESTREAM_RESTORE_TXID' => $m['txid'] ?? '',
+        ],
+      ],
+    ];
+
+    $resp = new JsonResponse($payload);
+    $resp->setEncodingOptions(JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $m['label']);
+    $resp->headers->set('Content-Disposition', sprintf('attachment; filename="marker-%s.json"', $name));
+    return $resp;
+  }
+
+}

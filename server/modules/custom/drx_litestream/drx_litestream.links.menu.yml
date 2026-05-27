@@ -1,0 +1,6 @@
+drx_litestream.health:
+  title: 'DrX Litestream'
+  description: 'Replication health and point-in-time markers.'
+  parent: system.admin_config_system
+  route_name: drx_litestream.health
+  weight: 50

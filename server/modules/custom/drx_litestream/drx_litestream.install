@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * @file
+ * Install/uninstall hooks for drx_litestream.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_schema().
+ */
+function drx_litestream_schema(): array {
+  return [
+    'drx_litestream_marker' => [
+      'description' => 'Point-in-time restore markers captured against a litestream replica.',
+      'fields' => [
+        'id' => ['type' => 'serial', 'not null' => TRUE],
+        'uuid' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE],
+        'label' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+        'description' => ['type' => 'text', 'size' => 'normal', 'not null' => FALSE],
+        'replica_url' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+        'txid' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE, 'default' => ''],
+        'captured_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'created_uid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'notes' => ['type' => 'text', 'size' => 'normal', 'not null' => FALSE],
+      ],
+      'primary key' => ['id'],
+      'unique keys' => ['uuid' => ['uuid']],
+      'indexes' => ['captured_at' => ['captured_at']],
+    ],
+  ];
+}

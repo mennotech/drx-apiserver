@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ * DrX Litestream module hooks.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function drx_litestream_help(string $route_name, RouteMatchInterface $route_match): string {
+  if ($route_name === 'help.page.drx_litestream') {
+    return '<p>' . t('Surfaces litestream replication health and lets operators capture point-in-time markers for dev-machine restores. Requires the drx-apiserver base image with <code>DRX_LITESTREAM_ENABLED=1</code>.') . '</p>';
+  }
+  return '';
+}
