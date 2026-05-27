@@ -24,11 +24,20 @@ versioned — entries are grouped by the date of the corresponding
   verification target for the reference stack that writes a DB marker,
   stops the app gracefully, removes the local SQLite volume, boots the app,
   and asserts the marker is restored from Litestream/MinIO.
+- Added `make pit-drill` to [Makefile](Makefile), a local point-in-time
+  verification target that captures the replica TXID after marker A,
+  overwrites the row with marker B, then boots a fresh sidecar container
+  pinned via `DRX_LITESTREAM_RESTORE_TXID` and asserts the restored DB
+  shows marker A.
 - Updated [.env.example](.env.example) with local Litestream/MinIO defaults
   used by [server/docker-compose.yml](server/docker-compose.yml) so the DR
   drill and replication-health module work out of the box.
 - Updated the local target table in [README.md](README.md) to include
-  `make dr-drill`.
+  `make dr-drill` and `make pit-drill`.
+- Documented the litestream runtime contract in
+  [base/README.md](base/README.md#litestream-backup--restore-sqlite-only)
+  and the admin / dev-restore workflow in
+  [server/README.md](server/README.md#litestream-replication-admin-ui-and-dev-restore).
 
 ---
 

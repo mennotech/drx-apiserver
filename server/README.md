@@ -134,3 +134,87 @@ make smoke
 
 Note: `make smoke` boots the **base** image, not this overlay, so it
 will not exercise the seeded notes. Use `make up` for that.
+
+## Litestream replication: admin UI and dev restore
+
+The reference overlay enables the `drx_litestream` custom module (see
+[`modules/custom/drx_litestream/`](modules/custom/drx_litestream/)),
+which surfaces the base image's litestream integration to operators
+without requiring shell access to the container. The local
+[`docker-compose.yml`](docker-compose.yml) also boots a MinIO sidecar
+plus a one-shot bucket initialiser, and [`.env.example`](../.env.example)
+sets `DRX_LITESTREAM_*` defaults that point at it, so the dashboard
+shows live data with no extra configuration.
+
+### Health dashboard
+
+Once the stack is up (`make up`), visit
+[http://localhost:8088/admin/config/drx/litestream](http://localhost:8088/admin/config/drx/litestream).
+The page reports:
+
+- Whether the `litestream replicate` daemon is running inside the
+  container.
+- Resolved config and SQLite paths and the replica URL in use.
+- Local TXID and WAL size from `litestream status`.
+- Latest TXID present on the replica (read via `litestream ltx`).
+- The SQLite file's last-modified timestamp.
+
+If `DRX_LITESTREAM_ENABLED` is not `1`, the page shows a notice
+explaining how to opt in instead.
+
+### Capturing and exporting point-in-time markers
+
+From the dashboard, **Capture point-in-time marker** opens a form that
+stamps the current replica TXID into a `drx_litestream_marker` row with
+a human label and optional notes. The markers table at
+`/admin/config/drx/litestream/markers` lists every capture and offers a
+JSON export per row. The exported document includes:
+
+- The replica URL, captured TXID, and capture timestamp.
+- A `dev_restore_hint.shell` one-liner for a direct
+  `litestream restore -txid …` invocation.
+- A `dev_restore_hint.docker_env` block that maps directly onto the
+  base image's runtime contract (`DRX_LITESTREAM_RESTORE_ON_BOOT=always`
+  plus `DRX_LITESTREAM_RESTORE_TXID`), so a fresh container can
+  reproduce that exact state.
+
+### Restoring a marker on a dev machine
+
+Two equivalent paths, both using values from the exported JSON:
+
+1. Pull a single SQLite file with the `litestream` CLI:
+
+   ```sh
+   litestream restore \
+     -txid <TXID> \
+     -o ./dev.sqlite \
+     <REPLICA_URL>
+   ```
+
+2. Boot a fresh `drx-apiserver` container pinned to the marker:
+
+   ```sh
+   docker run --rm \
+     -e DRX_LITESTREAM_ENABLED=1 \
+     -e DRX_LITESTREAM_REPLICA_URL=<REPLICA_URL> \
+     -e DRX_LITESTREAM_ENDPOINT=<endpoint, if any> \
+     -e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
+     -e DRX_LITESTREAM_RESTORE_TXID=<TXID> \
+     -e LITESTREAM_ACCESS_KEY_ID=<key> \
+     -e LITESTREAM_SECRET_ACCESS_KEY=<secret> \
+     ghcr.io/mennotech/drx-apiserver:<tag>
+   ```
+
+   The bootstrap clears the local DB (because the policy is `always`),
+   then runs `litestream restore -txid <TXID>` before Drupal install
+   detection, so the site comes up at exactly the captured state.
+
+### Automated drills
+
+Two `make` targets exercise the round-trip end-to-end against MinIO:
+
+- `make dr-drill` — writes a marker, removes the local SQLite volume,
+  and asserts the marker survives a restore from the replica.
+- See [base image runtime contract](../base/README.md#litestream-backup--restore-sqlite-only)
+  for the full list of `DRX_LITESTREAM_*` env vars driving these flows.
+

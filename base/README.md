@@ -139,6 +139,52 @@ RUN echo 'memory_limit = 512M' > /usr/local/etc/php/conf.d/99-overrides.ini
 | `DRX_HEALTHCHECK_PORT` | `80`  | Healthcheck target port.                                    |
 | `DRX_HEALTHCHECK_PATH` | `/user/login_status?_format=json` | Healthcheck target path.        |
 
+### Litestream backup / restore (SQLite only)
+
+The image bundles the pinned `litestream` binary at
+`/usr/local/bin/litestream` and integrates it into bootstrap. The
+feature is **off by default**; opt in by setting
+`DRX_LITESTREAM_ENABLED=1` and providing a replica URL plus credentials.
+
+When enabled, the bootstrap:
+
+1. Renders `/etc/litestream.yml` from the `DRX_LITESTREAM_*` env vars
+   (or leaves an operator-supplied file alone if it already exists).
+2. Runs `litestream restore` before Drupal install detection, honouring
+   `DRX_LITESTREAM_RESTORE_ON_BOOT` and any point-in-time pin.
+3. Wraps the final `exec` line as
+   `litestream replicate -config /etc/litestream.yml -exec "<CMD>"`,
+   so the process tree becomes
+   `tini → drx-init → litestream → <CMD>` (typically Apache).
+   Litestream forwards signals and performs a final WAL checkpoint plus
+   replica sync on graceful shutdown (SIGTERM).
+
+Only the SQLite driver is replicated; `DRUPAL_DB_DRIVER=mysql|pgsql`
+ignores these settings.
+
+| Variable                              | Default              | Notes                                                                                 |
+| ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
+| `DRX_LITESTREAM_ENABLED`              | `0`                  | Master switch. `1` enables render + restore + replicate wrapping.                     |
+| `DRX_LITESTREAM_REPLICA_URL`          | _(unset)_            | **Required when enabled.** e.g. `s3://bucket/prefix`.                                 |
+| `DRX_LITESTREAM_ENDPOINT`             | _(unset)_            | Optional. Custom S3 endpoint (MinIO and other S3-compatible stores).                  |
+| `DRX_LITESTREAM_REGION`               | `us-east-1`          | S3 region.                                                                            |
+| `DRX_LITESTREAM_FORCE_PATH_STYLE`     | _(auto)_             | Auto `true` when an endpoint is set, otherwise `false`. Override with `true`/`false`. |
+| `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
+| `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
+| `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |
+| `DRX_LITESTREAM_RESTORE_TXID`         | _(unset)_            | Optional hex TXID to pin the restore at (e.g. taken from a marker export).            |
+| `DRX_LITESTREAM_RESTORE_TIMESTAMP`    | _(unset)_            | Optional RFC3339 timestamp. Mutually exclusive with `_RESTORE_TXID`; TXID wins.       |
+
+Credentials are passed through using litestream-native env vars
+(`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`) or the
+AWS_*-style equivalents. The image does not source any cloud-provider
+credential helpers; mount or inject them via your deployment platform.
+
+The base image only provides the runtime contract. Operator-facing UI
+(replication health dashboard, point-in-time marker capture and export)
+lives in a downstream module — see the reference implementation in
+[server/modules/custom/drx_litestream](../server/modules/custom/drx_litestream).
+
 ---
 
 ## Filesystem contract
