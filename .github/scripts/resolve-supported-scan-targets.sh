@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+required_vars=(GITHUB_REPOSITORY GITHUB_TOKEN IMAGE_REF GITHUB_OUTPUT GITHUB_STEP_SUMMARY)
+for var_name in "${required_vars[@]}"; do
+  if [[ -z "${!var_name:-}" ]]; then
+    echo "::error::Required environment variable ${var_name} is not set."
+    exit 2
+  fi
+done
+
 api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100"
 releases_json=$(curl -fsSL \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
@@ -59,16 +67,51 @@ if [[ "$(jq 'length' <<< "$selected")" -eq 0 ]]; then
 fi
 
 resolved='[]'
+skipped='[]'
 while IFS= read -r row; do
   line=$(jq -r '.line' <<< "$row")
   image_tag=$(jq -r '.image_tag' <<< "$row")
   release_tag=$(jq -r '.release_tag' <<< "$row")
   image_ref="${IMAGE_REF}:${image_tag}"
 
-  digest=$(docker buildx imagetools inspect "$image_ref" | awk '/^Digest:/ { print $2; exit }')
+  inspect_output=""
+  if ! inspect_output=$(docker buildx imagetools inspect "$image_ref" 2>&1); then
+    skipped=$(jq -c \
+      --arg line "$line" \
+      --arg image_tag "$image_tag" \
+      --arg release_tag "$release_tag" \
+      --arg image_ref "$image_ref" \
+      --arg reason "$inspect_output" \
+      '. + [{
+        line: $line,
+        image_tag: $image_tag,
+        release_tag: $release_tag,
+        image_ref: $image_ref,
+        reason: $reason
+      }]' \
+      <<< "$skipped")
+    echo "::warning::Skipping $image_ref: unable to inspect manifest."
+    continue
+  fi
+
+  digest=$(awk '/^Digest:/ { print $2; exit }' <<< "$inspect_output")
   if [[ -z "$digest" ]]; then
-    echo "::error::Failed to resolve digest for $image_ref"
-    exit 1
+    skipped=$(jq -c \
+      --arg line "$line" \
+      --arg image_tag "$image_tag" \
+      --arg release_tag "$release_tag" \
+      --arg image_ref "$image_ref" \
+      --arg reason "Digest field not found in imagetools output." \
+      '. + [{
+        line: $line,
+        image_tag: $image_tag,
+        release_tag: $release_tag,
+        image_ref: $image_ref,
+        reason: $reason
+      }]' \
+      <<< "$skipped")
+    echo "::warning::Skipping $image_ref: digest not found in inspect output."
+    continue
   fi
 
   resolved=$(jq -c \
@@ -86,6 +129,17 @@ while IFS= read -r row; do
     }]' \
     <<< "$resolved")
 done < <(jq -c '.[]' <<< "$selected")
+
+if [[ "$(jq 'length' <<< "$resolved")" -eq 0 ]]; then
+  echo "::error::No published images were resolvable from selected release tags."
+  echo "::group::Selected release rows"
+  jq '.' <<< "$selected"
+  echo "::endgroup::"
+  echo "::group::Skipped targets"
+  jq '.' <<< "$skipped"
+  echo "::endgroup::"
+  exit 1
+fi
 
 matrix=$(jq -c --arg image "$IMAGE_REF" '
   sort_by(.digest)
@@ -113,6 +167,7 @@ jq -n \
   --arg generated_at "$generated_at" \
   --argjson selected "$selected" \
   --argjson resolved "$resolved" \
+  --argjson skipped "$skipped" \
   --argjson matrix "$matrix" \
   '{
     mode: $mode,
@@ -120,6 +175,7 @@ jq -n \
     generated_at: $generated_at,
     selected_release_lines: $selected,
     resolved_targets: $resolved,
+    skipped_targets: $skipped,
     scan_matrix: $matrix
   }' > supported-scan-targets.json
 
@@ -137,4 +193,11 @@ jq -n \
   echo "| support line | image tag | digest |"
   echo "| --- | --- | --- |"
   jq -r '.resolved_targets[] | "| \(.line) | \(.image_tag) | \(.digest) |"' supported-scan-targets.json
+
+  skipped_count=$(jq '.skipped_targets | length' supported-scan-targets.json)
+  if [[ "$skipped_count" -gt 0 ]]; then
+    echo ""
+    echo "Skipped unresolved targets: ${skipped_count}"
+    jq -r '.skipped_targets[] | "- \(.image_ref): \(.reason | split("\n")[0])"' supported-scan-targets.json
+  fi
 } >> "$GITHUB_STEP_SUMMARY"

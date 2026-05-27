@@ -25,6 +25,7 @@ versioned — entries are grouped by the date of the corresponding
   - `.github/scripts/write-trivy-scan-metadata.sh`
   - `.github/scripts/summarize-trivy-findings.sh`
 - Added `actions/checkout@v4` to both jobs so repository-hosted CI scripts are available at runtime.
+- Hardened `.github/scripts/resolve-supported-scan-targets.sh` to validate required CI environment variables, capture `docker buildx imagetools inspect` failures as structured skipped-target diagnostics, and emit actionable grouped debug output when no targets can be resolved.
 
 ## [2026-05-27] (drx-apiserver v0.0.3-rc3)
 
