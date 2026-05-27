@@ -150,6 +150,19 @@ validation before floating tags move.
 End-of-life dates are recorded in [base/CHANGELOG.md](base/CHANGELOG.md)
 on the release that triggers them.
 
+### Continuous vulnerability monitoring
+
+Daily Trivy monitoring is scoped to supported lines only, not full tag
+history:
+
+- Current minor line: latest patch release in the newest supported `X.Y`.
+- Previous minor line: latest patch release in the previous supported `X.Y`.
+
+The workflow resolves these tags to digests, deduplicates by digest, and
+uploads SARIF results to GitHub code scanning while also publishing JSON
+artifacts for automation and history. See [SUPPORT.md](SUPPORT.md) for
+operational details.
+
 ---
 
 ## Latest release

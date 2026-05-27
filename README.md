@@ -16,6 +16,7 @@ ghcr.io/mennotech/drx-drupal-base
 | [base/README.md](base/README.md)      | Image consumers — runtime contract, env vars, hooks, security posture. |
 | [base/CHANGELOG.md](base/CHANGELOG.md)| Image consumers — runtime contract release notes (Keep a Changelog). |
 | [RELEASES.md](RELEASES.md)            | Operators — published versions, tag policy, cadence, upgrade guidance. |
+| [SUPPORT.md](SUPPORT.md)              | Operators — supported image lines and continuous vulnerability monitoring scope. |
 | [CHANGELOG.md](CHANGELOG.md)          | Contributors — repository-level changes (CI, docs, tooling). |
 
 ---
@@ -106,10 +107,13 @@ overridable variables.
 - **Tags published** (per [.github/workflows/base-image.yml](.github/workflows/base-image.yml)):
   - Stable release `vX.Y.Z` &rarr; `X.Y.Z`, `X.Y`, `X`, `latest`
   - Release candidate `vX.Y.Z-rcN` &rarr; `X.Y.Z-rcN` only
-  - Push to `main` &rarr; `edge`
+  - Push to `main` &rarr; no published image tags (CI/smoke only)
 - **Supply chain**: every published tag includes an SBOM and SLSA build
   provenance attestation. Images are scanned with Trivy
   (`CRITICAL`, `HIGH`, fail-on-fixed) before publish.
+- **Ongoing monitoring**: a daily workflow scans the currently supported
+  image lines (current + previous minor) and publishes SARIF alerts plus
+  downloadable JSON/SARIF artifacts. See [SUPPORT.md](SUPPORT.md).
 
 ---
 

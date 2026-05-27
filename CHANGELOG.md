@@ -17,6 +17,20 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Added
+
+#### Supported-line daily security scan
+- Added [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml), a daily/manual workflow that:
+  - resolves the latest patch in the current and previous supported minor
+    lines,
+  - resolves those tags to immutable image digests,
+  - deduplicates by digest,
+  - runs non-gating Trivy scans (`CRITICAL,HIGH`, `ignore-unfixed=true`),
+  - uploads SARIF to GitHub code scanning,
+  - uploads JSON/SARIF/metadata artifacts for downstream automation.
+- Added [SUPPORT.md](SUPPORT.md) to define supported image lines and
+  document where continuous-scan outputs are published.
+
 ### Changed
 
 #### Base image publish behavior
