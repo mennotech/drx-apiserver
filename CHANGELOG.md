@@ -28,6 +28,8 @@ versioned — entries are grouped by the date of the corresponding
 - Hardened `.github/scripts/resolve-supported-scan-targets.sh` to validate required CI environment variables, capture `docker buildx imagetools inspect` failures as structured skipped-target diagnostics, and emit actionable grouped debug output when no targets can be resolved.
 - Expanded `.github/scripts/summarize-trivy-findings.sh` to print a full severity breakdown (`UNKNOWN`/`LOW`/`MEDIUM`/`HIGH`/`CRITICAL`) and a readable top-findings table (vulnerability ID, package, installed/fixed version, target, title) in the job summary.
 - Split supported-line scan severities by artifact: SARIF upload remains `CRITICAL,HIGH` for high-signal code-scanning alerts, while JSON artifacts now include `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL` for full downstream automation visibility.
+- Fixed a summary-script jq failure when counting `UNKNOWN` vulnerabilities in Trivy JSON.
+- Switched SARIF limiting to Trivy's built-in `limit-severities-for-sarif` input and removed the custom post-processing filter step.
 
 ## [2026-05-27] (drx-apiserver v0.0.3-rc3)
 

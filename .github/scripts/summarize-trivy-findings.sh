@@ -11,7 +11,7 @@ critical=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") | asci
 high=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") | ascii_upcase == "HIGH")] | length' "$json_file")
 medium=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") | ascii_upcase == "MEDIUM")] | length' "$json_file")
 low=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") | ascii_upcase == "LOW")] | length' "$json_file")
-unknown=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") | ascii_upcase == "UNKNOWN" or .Severity == null)] | length' "$json_file")
+unknown=$(jq '[.Results[]?.Vulnerabilities[]? | select(((.Severity // "UNKNOWN") | ascii_upcase) == "UNKNOWN")] | length' "$json_file")
 total_all=$((critical + high + medium + low + unknown))
 total_high_critical=$((critical + high))
 
