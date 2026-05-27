@@ -21,11 +21,13 @@ versioned — entries are grouped by the date of the corresponding
 
 #### Local dev image orchestration
 - Updated [Makefile](Makefile) target semantics so `make up` no longer rebuilds images by default; it now only starts the stack from the currently available image.
-- Added `make up-build` as an explicit convenience target that rebuilds the app image (`make build`) and then starts the stack.
-- Aligned app-image tagging between [Makefile](Makefile) and [server/docker-compose.yml](server/docker-compose.yml): Compose now uses `image: ${APP_IMAGE:-drx-apiserver-demo:dev}` and Makefile exports `APP_IMAGE` for `build`, `up`, and `down`.
+- Added `make up-build` as an explicit convenience target that rebuilds the app image (`make app`) and then starts the stack.
+- Updated `make up` to use Compose `up --no-build -d`, so it never triggers an implicit build and only launches an already-built app image.
+- Aligned app-image tagging between [Makefile](Makefile) and [server/docker-compose.yml](server/docker-compose.yml): Compose now uses `image: ${APP_IMAGE:-drx-apiserver-demo:dev}` and Makefile exports `APP_IMAGE` for `app`, `up`, and `down`.
 - Removed the prior `drx-apiserver:dev` app-image tag collision with the base-image default, which could cause the reference overlay (`server/config`, hooks, modules) to be skipped at runtime when the wrong local image was started.
 - Moved the reference Compose file from repo root to [server/docker-compose.yml](server/docker-compose.yml), and made [Makefile](Makefile) call Compose with explicit `-f`, `--project-directory`, and project name arguments so local orchestration remains root-driven and predictable.
-- Renamed the app image build target from `make app` to `make build` for clearer intent in workflows like `make up-build`.
+- Fixed [server/docker-compose.yml](server/docker-compose.yml) build paths for root-driven Compose invocation: build context now points to `./server`, ensuring Compose resolves [server/Dockerfile](server/Dockerfile) and includes `server/config`, hooks, and modules in the app image.
+- Added `make build` as an alias for `make app` and kept `make app` as the primary app build target.
 - Added `make up-base` and `make down-base` to run or stop only the pure base image locally without bringing up the reference overlay stack.
 
 #### Supported-line security scan maintainability

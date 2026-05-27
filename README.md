@@ -72,7 +72,8 @@ Local orchestration is via [Makefile](Makefile):
 | Target       | Purpose                                                 |
 | ------------ | ------------------------------------------------------- |
 | `make base`  | Build `drx-apiserver:dev` locally from [base/](base/). |
-| `make build` | Build the reference overlay from [server/](server/).   |
+| `make app`   | Build the reference overlay from [server/](server/).   |
+| `make build` | Alias of `make app`.                                    |
 | `make up`    | Bring up the reference app via Docker Compose (no rebuild). |
 | `make up-build` | Rebuild the reference app, then bring it up.        |
 | `make down`  | Stop the reference app.                                 |

@@ -1,7 +1,8 @@
 # Local development orchestration for drx-apiserver.
 #
 # `make base`   — build the reusable drx-apiserver base image locally
-# `make build`  — build the reference app on top of it
+# `make app`    — build the reference app on top of it
+# `make build`  — alias of `make app`
 # `make up`     — bring up the reference app via docker compose (no rebuild)
 # `make up-build` — rebuild app image, then bring it up
 # `make down`   — stop the reference app
@@ -41,7 +42,7 @@ COMPOSE_ARGS      ?= -f $(COMPOSE_FILE) --project-directory . -p $(COMPOSE_PROJE
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
 
-.PHONY: base build up up-build down up-base down-base smoke scan verify clean
+.PHONY: base app build up up-build down up-base down-base smoke scan verify clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -51,13 +52,15 @@ base:
 		--build-arg DRX_BASE_BUILD_DATE=$(BUILD_DATE) \
 		./base
 
-build: base
+app: base
 	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) build
 
-up:
-	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up -d
+build: app
 
-up-build: build up
+up:
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d
+
+up-build: app up
 
 down:
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down
