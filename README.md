@@ -73,7 +73,8 @@ Local orchestration is via [Makefile](Makefile):
 | ------------ | ------------------------------------------------------- |
 | `make base`  | Build `drx-apiserver:dev` locally from [base/](base/). |
 | `make app`   | Build the reference overlay from [server/](server/).   |
-| `make up`    | Bring up the reference app via Docker Compose.          |
+| `make up`    | Bring up the reference app via Docker Compose (no rebuild). |
+| `make up-build` | Rebuild the reference app, then bring it up.        |
 | `make down`  | Stop the reference app.                                 |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
 | `make clean` | Remove build artifacts and local image tags.            |

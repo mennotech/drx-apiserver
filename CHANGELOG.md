@@ -19,6 +19,12 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Changed
 
+#### Local dev image orchestration
+- Updated [Makefile](Makefile) target semantics so `make up` no longer rebuilds images by default; it now only starts the stack from the currently available image.
+- Added `make up-build` as an explicit convenience target that rebuilds the app image (`make app`) and then starts the stack.
+- Aligned app-image tagging between [Makefile](Makefile) and [docker-compose.yml](docker-compose.yml): Compose now uses `image: ${APP_IMAGE:-drx-apiserver-demo:dev}` and Makefile exports `APP_IMAGE` for `build`, `up`, and `down`.
+- Removed the prior `drx-apiserver:dev` app-image tag collision with the base-image default, which could cause the reference overlay (`server/config`, hooks, modules) to be skipped at runtime when the wrong local image was started.
+
 #### Supported-line security scan maintainability
 - Refactored [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml) to move long inline Bash logic into dedicated, testable scripts under `.github/scripts/`:
   - `.github/scripts/resolve-supported-scan-targets.sh`

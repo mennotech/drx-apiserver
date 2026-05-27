@@ -2,7 +2,8 @@
 #
 # `make base`   — build the reusable drx-apiserver base image locally
 # `make app`    — build the reference app on top of it
-# `make up`     — bring up the reference app via docker compose
+# `make up`     — bring up the reference app via docker compose (no rebuild)
+# `make up-build` — rebuild app image, then bring it up
 # `make down`   — stop the reference app
 # `make smoke`  — boot the base image and hit its healthcheck
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
@@ -32,7 +33,7 @@ COMPOSE           ?= $(CONTAINER_ENGINE) compose
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
 
-.PHONY: base app up down smoke scan verify clean
+.PHONY: base app up up-build down smoke scan verify clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -43,13 +44,15 @@ base:
 		./base
 
 app: base
-	DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) build
+	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) build
 
-up: app
-	$(COMPOSE) up -d
+up:
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) up -d
+
+up-build: app up
 
 down:
-	$(COMPOSE) down
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) down
 
 # The healthcheck script is invoked directly via `$(CONTAINER_ENGINE) exec`
 # rather than read from `.State.Health.Status`, so this target works the
