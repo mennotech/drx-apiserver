@@ -11,6 +11,7 @@
 # `make smoke`  — boot the base image and hit its healthcheck
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
+# `make dr-drill` — local disaster-recovery drill (backup + restore from replica)
 # `make clean`  — remove build artifacts and the local image tags
 
 BASE_IMAGE   ?= drx-apiserver:dev
@@ -41,8 +42,10 @@ COMPOSE_ARGS      ?= -f $(COMPOSE_FILE) --project-directory . -p $(COMPOSE_PROJE
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
+DR_DRILL_HEALTH_TIMEOUT ?= 90
+DR_DRILL_SYNC_WAIT      ?= 3
 
-.PHONY: base app build up up-build down up-base down-base smoke scan verify clean
+.PHONY: base app build up up-build down up-base down-base smoke scan verify dr-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -130,6 +133,48 @@ scan: base
 # Minimum local check before `git push`. Mirrors the CI gates.
 verify: smoke scan
 	@echo "verify ok"
+
+# Local disaster-recovery drill for the reference app stack:
+# 1) boot app + minio, 2) write a DB marker,
+# 3) stop app gracefully to flush final litestream sync,
+# 4) delete local SQLite volume, 5) boot app and verify marker restored.
+dr-drill: up-build
+	@echo "Starting DR drill (single-machine litestream restore test)"
+	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	if [ -z "$$CID" ]; then echo "drx-apiserver container not found"; exit 1; fi; \
+	echo "Waiting for backend health..."; \
+	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
+		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $$CID 2>/dev/null || true )"; \
+		if [ "$$status" = "healthy" ]; then echo "healthy after $${i}s"; break; fi; \
+		if [ "$$status" = "unhealthy" ]; then echo "backend unhealthy"; $(CONTAINER_ENGINE) logs $$CID; exit 1; fi; \
+		sleep 1; \
+	done; \
+	marker="drill-$$(date -u +%Y%m%dT%H%M%SZ)"; \
+	echo "Writing marker $$marker"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web sql:query \
+		"DELETE FROM key_value WHERE collection='drx_drill' AND name='marker'; INSERT INTO key_value (collection, name, value) VALUES ('drx_drill','marker','$$marker');" >/dev/null; \
+	echo "Waiting $(DR_DRILL_SYNC_WAIT)s for litestream sync"; \
+	sleep $(DR_DRILL_SYNC_WAIT); \
+	echo "Stopping backend gracefully"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) stop -t 15 drx-apiserver >/dev/null; \
+	echo "Simulating local DB loss"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) rm -f -s -v drx-apiserver >/dev/null 2>&1 || true; \
+	$(CONTAINER_ENGINE) volume rm $(COMPOSE_PROJECT)_backend_drupal_db >/dev/null; \
+	echo "Recreating backend and restoring from replica"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d drx-apiserver >/dev/null; \
+	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
+		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $$CID 2>/dev/null || true )"; \
+		if [ "$$status" = "healthy" ]; then echo "restored backend healthy after $${i}s"; break; fi; \
+		if [ "$$status" = "unhealthy" ]; then echo "restored backend unhealthy"; $(CONTAINER_ENGINE) logs $$CID; exit 1; fi; \
+		sleep 1; \
+	done; \
+	restored="$$(printf "SELECT value FROM key_value WHERE collection='drx_drill' AND name='marker';\n" | APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T drx-apiserver sqlite3 /var/drupal-db/db.sqlite)"; \
+	if [ "$$restored" != "$$marker" ]; then \
+		echo "DR drill FAILED: expected '$$marker' got '$$restored'"; \
+		exit 1; \
+	fi; \
+	echo "DR drill ok: restored marker $$restored"
 
 clean:
 	$(COMPOSE) $(COMPOSE_ARGS) down -v 2>/dev/null || true

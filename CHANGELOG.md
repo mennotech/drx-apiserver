@@ -17,6 +17,19 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Added
+
+#### Local DR drill workflow
+- Added `make dr-drill` to [Makefile](Makefile), a local disaster-recovery
+  verification target for the reference stack that writes a DB marker,
+  stops the app gracefully, removes the local SQLite volume, boots the app,
+  and asserts the marker is restored from Litestream/MinIO.
+- Updated [.env.example](.env.example) with local Litestream/MinIO defaults
+  used by [server/docker-compose.yml](server/docker-compose.yml) so the DR
+  drill and replication-health module work out of the box.
+- Updated the local target table in [README.md](README.md) to include
+  `make dr-drill`.
+
 ---
 
 ## [2026-05-27] (drx-apiserver v0.0.4-rc4)

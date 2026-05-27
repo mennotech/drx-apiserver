@@ -80,6 +80,7 @@ Local orchestration is via [Makefile](Makefile):
 | `make up-base` | Run only the base image (no reference overlay).      |
 | `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
+| `make dr-drill` | Run a local disaster-recovery drill (write marker, remove DB volume, restore from litestream replica). |
 | `make clean` | Remove build artifacts and local image tags.            |
 
 Override `VERSION`, `BASE_IMAGE`, `APP_IMAGE`, or `SMOKE_PORT` on the
