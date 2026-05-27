@@ -80,6 +80,14 @@ Local orchestration is via [Makefile](Makefile):
 Override `VERSION`, `BASE_IMAGE`, `APP_IMAGE`, or `SMOKE_PORT` on the
 command line if needed, e.g. `make base VERSION=0.2.0-dev`.
 
+The Makefile is engine-agnostic: set `CONTAINER_ENGINE=podman` (and,
+optionally, `COMPOSE="podman compose"`) to drive every target through
+Podman. `make scan` does not need a container API socket — it exports
+the image with `$(CONTAINER_ENGINE) save` into a host tempdir and feeds
+it to Trivy via `--input`, so `make verify CONTAINER_ENGINE=podman`
+works the same on Docker, macOS/Windows `podman machine`, and rootless
+or rootful Linux Podman. CI still runs the Docker path.
+
 The reference app expects `DRUPAL_ADMIN_PASS` to be set (in `.env` or the
 shell). See [docker-compose.yml](docker-compose.yml) for the full set of
 overridable variables.

@@ -10,6 +10,79 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.2-rc2] - 2026-05-26
+
+### Security
+- Runtime package patching is now deterministic by default: the
+  `apt-get upgrade` blanket update was removed from the runtime image
+  build, and a targeted, temporary override mechanism was added via the
+  `DRX_APT_SECURITY_OVERRIDES` build arg in `base/Dockerfile`. Overrides
+  must be explicit `name=version` pairs (for example,
+  `openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2`) and are applied
+  with `apt-get install --only-upgrade`. This allows maintainers to patch
+  specific CVEs ahead of an upstream base digest refresh, then remove the
+  override once the pinned parent image includes the fix.
+- Refreshed the pinned upstream PHP base image from
+  `php:8.3.30-apache-bookworm` to
+  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
+- Set a temporary default value for `DRX_APT_SECURITY_OVERRIDES`
+  directly in `base/Dockerfile` (single source of truth) to apply
+  exact-version upgrades for `libgnutls30` and Kerberos runtime
+  libraries (`libgssapi-krb5-2`, `libk5crypto3`, `libkrb5-3`,
+  `libkrb5support0`) until the pinned upstream base digest includes
+  those fixed package versions.
+
+## [0.0.1-rc2] - 2026-05-26
+
+### Fixed
+- Bootstrap no longer crash-loops when `drush config:import --partial`
+  reports a non-zero exit. `drx::config_import::run` previously ended
+  with a `[ "$mode" = "full" ] && drx::die …` short-circuit, which
+  surfaced as a non-zero return whenever `mode != full` and tripped
+  `set -e` in `init.sh`, aborting bootstrap before `exec "$@"` and
+  causing the container to exit and restart in a tight loop. The
+  function now uses an explicit `if`/`then`/`fi` block and always
+  returns `0` in partial mode; the existing `drx::warn` log line
+  remains the failure signal.
+
+### Changed
+- `DRUPAL_BASE_MODULES` now defaults to
+  `config jsonapi serialization basic_auth rest` (was
+  `jsonapi serialization basic_auth rest`). Drupal core's `config`
+  module is required by `drush config:import --partial`, which the
+  default config-import mode uses; without it, the import would log
+  `Enable the config module in order to use the --partial option.` and
+  silently drop site config. Consumers overriding `DRUPAL_BASE_MODULES`
+  should add `config` to their list (or set
+  `DRUPAL_CONFIG_IMPORT_MODE=full`, which does not depend on the
+  module).
+
+### Security
+- Patched `twig/twig` from `v3.22.2` to `v3.26.0` to remediate
+  `CVE-2026-46633` (CRITICAL — PHP code injection via `{% use %}`
+  template name) and `CVE-2026-46640` (HIGH — arbitrary PHP execution
+  via `_self.(<string>)` macro-reference compilation). The bump
+  required updating `drupal/core-recommended` from `10.6.8` to
+  `10.6.9` (which widens its `twig/twig` constraint from `~3.22.0` to
+  `^3.26.0`); a direct `twig/twig: ^3.26` require was added to
+  `base/composer.json` to lock in the floor. `config.policy.audit.ignore`
+  was added for `PKSA-dwsq-ppd2-mb1x` (a transitive
+  `symfony/polyfill-intl-idn` advisory) so the lock can resolve;
+  Trivy remains the authoritative security gate.
+
+### Changed
+- **BREAKING:** `DRUPAL_INSTALL_PROFILE` now defaults to `minimal` (was
+  `standard`). The `standard` profile pre-creates an Article content
+  type, a Tags taxonomy, and a `field_tags` field storage of type
+  `entity_reference` on `node`, all of which are foreign to an
+  API-first base image and collide with downstream overlays that try
+  to define their own `field_tags`. Minimal installs leave field-name
+  space, content types, and taxonomies entirely to the consumer.
+  Consumers that rely on `standard`'s scaffolding must set
+  `DRUPAL_INSTALL_PROFILE=standard` explicitly. Existing sites already
+  installed against `standard` are unaffected — the profile is only
+  consulted on first install.
+
 ## [0.0.1-rc1] - 2026-05-07
 
 First public preview of `drx-drupal-base`. The runtime contract is

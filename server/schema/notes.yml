@@ -1,0 +1,45 @@
+version: 2
+catalog:
+  reusable_bundles:
+    - machine_name: note
+      label: Note
+      description: "Simple notes content for the drx-apiserver reference deployment. Demonstrates how a downstream consumer of drx-drupal-base can ship a working content model on first boot by committing the Drupal config scaffold generated from this schema by drx-schema."
+      kind: supporting_record
+      sections:
+        - id: note_content
+          title: Note Content
+          description: "Primary fields for a note. The Drupal node title acts as the note's title; the remaining fields capture body, lifecycle state, and a few optional planning attributes."
+          fields:
+            - key: body
+              label: Body
+              type: textarea
+              required: true
+            - key: status
+              label: Status
+              type: select
+              required: true
+              options: [draft, published, archived]
+              default: draft
+            - key: pinned
+              label: Pinned
+              type: boolean
+              required: false
+            - key: due_date
+              label: Due Date
+              type: date
+              required: false
+        - id: note_metadata
+          title: Tags and Metadata
+          description: "Optional tagging and categorization fields. Tags are free-form and multi-value; category is a constrained single-select."
+          fields:
+            - key: note_tags
+              label: Tags
+              type: text
+              required: false
+              cardinality: -1
+            - key: category
+              label: Category
+              type: select
+              required: false
+              options: [personal, work, project, idea, reference, other]
+              default: personal

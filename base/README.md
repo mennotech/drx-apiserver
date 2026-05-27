@@ -78,7 +78,7 @@ All variables are optional except where marked.
 | `DRUPAL_ADMIN_USER`       | `admin`      |                                                        |
 | `DRUPAL_ADMIN_PASS`       | _(unset)_    | **Required** before first install.                     |
 | `DRUPAL_SITE_NAME`        | `Drupal`     | Used only at first install.                            |
-| `DRUPAL_INSTALL_PROFILE`  | `standard`   | Any profile present in the image is valid.             |
+| `DRUPAL_INSTALL_PROFILE`  | `minimal`    | Any profile present in the image is valid. `minimal` keeps the base neutral; set `standard` to opt into Drupal's default Article/Tags/comment scaffolding. |
 | `DRUPAL_HOSTNAME`         | _(derived)_  | Overrides Apache `ServerName` and trusted-host derivation. |
 
 ### Public URLs and CORS
@@ -113,7 +113,7 @@ All variables are optional except where marked.
 
 | Variable                       | Default                                          | Notes                                                                     |
 | ------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| `DRUPAL_BASE_MODULES`          | `jsonapi serialization basic_auth rest`          | Enabled before config import.                                             |
+| `DRUPAL_BASE_MODULES`          | `config jsonapi serialization basic_auth rest`   | Enabled before config import. `config` is required for `drush config:import --partial`. |
 | `DRUPAL_EXTRA_MODULES`         | _(empty)_                                        | Enabled after config import. Use for modules with config dependencies.    |
 | `DRUPAL_CONFIG_SYNC_DIR`       | `/var/www/html/config/sync`                      | Ignored if directory empty.                                               |
 | `DRUPAL_CONFIG_IMPORT_MODE`    | `partial`                                        | Set to `full` to fail boot on missing dependencies.                       |
@@ -222,6 +222,26 @@ Downstream projects should:
 - HTTP `Server` and `WWW-Authenticate` headers are suppressed.
 - The image is built from a pinned PHP base image digest; releases include
   SBOM + provenance.
+
+### Targeted apt security overrides (build-time)
+
+The runtime stage avoids blanket `apt-get upgrade` so builds remain
+deterministic relative to the pinned upstream base digest. For urgent CVE
+patches that are not yet present in that digest, maintainers can pass
+temporary exact-version overrides at build time:
+
+```bash
+docker build \
+  --build-arg DRX_APT_SECURITY_OVERRIDES="openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2" \
+  -t drx-drupal-base:dev ./base
+```
+
+Rules:
+
+- Use `name=version` pairs only.
+- Keep overrides temporary; remove them once the pinned upstream digest
+  includes the fix.
+- Prefer patching only the packages tied to active security findings.
 
 Report security issues privately to the maintainer; do not file public
 issues for embargoed CVEs.

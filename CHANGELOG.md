@@ -17,9 +17,127 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
-_none_
 
----
+## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
+
+### Added
+
+#### Drupal-version informational tags
+- `.github/workflows/base-image.yml` now extracts the resolved
+  `drupal/core` version from `base/composer.lock` at build time and
+  publishes a parallel family of informational tags alongside the
+  existing contract-version tags:
+  - `drupal-A.B.C` (immutable, published on every release including
+    `-rcN` pre-releases),
+  - `drupal-A.B` and `drupal-A` (floating, published on non-prerelease
+    releases only).
+  No `drupal-*` tags are pushed for `main` builds; the bundled Drupal
+  version is exposed instead via the new
+  `org.mennotech.drx.drupal.version` OCI label, which is set on every
+  image regardless of trigger.
+- `RELEASES.md → Tag policy` documents the two parallel tag families
+  (contract-version and Drupal-version) and the recommended pinning
+  strategies for each.
+
+#### Podman compatibility
+- `Makefile` now honours `CONTAINER_ENGINE` (default `docker`) and
+  `COMPOSE` (default `$(CONTAINER_ENGINE) compose`), so all local
+  targets — `base`, `app`, `up`, `down`, `smoke`, `scan`, `verify`,
+  `clean` — can be driven through Docker or rootless/rootful Podman
+  without editing the file. Typical invocation:
+  `make verify CONTAINER_ENGINE=podman`.
+- `make scan` is socket-free by design: instead of mounting a Docker /
+  Podman API socket into the Trivy container, it exports the local
+  image with `$(CONTAINER_ENGINE) save -o` into a host tempdir,
+  mounts the tempdir read-only into Trivy, and points
+  `--input /scan/image.tar` at the tarball. This sidesteps the
+  rootless-socket, `podman machine` (macOS / Windows), and userns
+  permission edge cases entirely — the scan path is identical across
+  engines and platforms.
+- `make scan` performs an engine-reachability preflight
+  (`$(CONTAINER_ENGINE) info`) and emits actionable hints
+  (`podman machine start`, `systemctl --user start podman.socket`)
+  when the engine is not running, instead of letting the underlying
+  command fail with an opaque error.
+- `make smoke` invokes the healthcheck script via
+  `$(CONTAINER_ENGINE) exec` rather than relying on
+  `.State.Health.Status`, so it works identically under Docker and
+  rootless Podman (which does not run `HEALTHCHECK` timers
+  automatically).
+- [README.md](README.md) updated with the Podman invocation pattern.
+- CI continues to run the Docker path only; Podman support is
+  contributor-side and not yet exercised by the publish pipeline.
+
+#### Reference Notes application
+- [server/](server/) gained a working "Notes" reference content model
+  that ships end-to-end on first boot, demonstrating how a downstream
+  consumer of `drx-drupal-base` can deliver a JSON:API-ready data
+  model with no manual post-install steps:
+  - [server/schema/notes.yml](server/schema/notes.yml): source-of-truth
+    `drx-schema` YAML defining a `note` bundle with `body`, `status`
+    (`draft|published|archived`), `pinned`, `due_date`, `note_tags`
+    (multi-value string), and `category` fields, grouped into Content
+    and Tags-and-Metadata sections.
+  - [server/config/](server/config/): generated Drupal config scaffold
+    (node type, field storages, field instances, form display, view
+    display) committed alongside the schema so the runtime image does
+    not depend on PowerShell or the generator. Regeneration steps are
+    documented in [server/README.md](server/README.md#regenerating-config-from-the-schema).
+  - [server/hooks/post-config-import.d/10-jsonapi-write-mode.sh](server/hooks/post-config-import.d/10-jsonapi-write-mode.sh):
+    project opt-in to JSON:API write mode (the base image remains
+    read-only by default).
+  - [server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh):
+    idempotent seed hook that creates three example Note nodes the
+    first time the site boots and records a state marker so subsequent
+    boots are no-ops.
+  - [server/hooks/post-modules.d/10-enable-navigation.sh](server/hooks/post-modules.d/10-enable-navigation.sh):
+    enables the experimental Navigation module so the example admin UI
+    is usable for evaluators.
+  - [server/hooks/post-install.d/05-enable-views-and-theme.sh](server/hooks/post-install.d/05-enable-views-and-theme.sh):
+    enables `views`, `datetime`, `options`, `text` (so the imported
+    field types resolve) and installs + activates the Claro admin
+    theme before config import runs.
+  - [server/hooks/post-modules.d/20-enable-views-ui.sh](server/hooks/post-modules.d/20-enable-views-ui.sh):
+    enables the `views_ui` module so the seeded view is editable from
+    the admin UI.
+  - [server/hooks/post-config-import.d/30-set-front-page.sh](server/hooks/post-config-import.d/30-set-front-page.sh):
+    points `system.site.page.front` at `/notes` so the front page
+    serves the Notes listing on first boot.
+  - [server/config/views.view.notes.yml](server/config/views.view.notes.yml):
+    Notes listing view (path `/notes`, title + created + body fields,
+    filters `status=1` + `bundle=note`, sorted by `field_pinned` DESC
+    then `created` DESC, 20 per page).
+- [server/README.md](server/README.md) describes the schema → config →
+  hooks pipeline, lists the field set, and documents the regeneration
+  procedure.
+
+### Changed
+
+#### CI diagnostics
+- `.github/workflows/base-image.yml` now includes a post-scan step that
+  parses `trivy.sarif` and prints a concise findings summary to the job
+  log (`ruleId | level | message`). This keeps SARIF upload/code-scanning
+  behavior unchanged while making failed Trivy runs easier to debug
+  directly from the Actions log output.
+- Trivy scanning in CI is split into two explicit phases: a gating
+  table scan (`CRITICAL,HIGH`, `ignore-unfixed`, `exit-code: 1`) to match
+  local `make scan` behavior, followed by a non-gating SARIF generation
+  step (`exit-code: 0`) used only for code-scanning upload and log
+  diagnostics.
+
+#### Base image release hardening / determinism
+- Refreshed the pinned upstream PHP base image digest in
+  [base/Dockerfile](base/Dockerfile) from
+  `php:8.3.30-apache-bookworm` to
+  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
+- Reworked runtime package patching to avoid non-deterministic blanket
+  upgrades and use explicit, temporary exact-version overrides via
+  `DRX_APT_SECURITY_OVERRIDES`, with a single source of truth in
+  [base/Dockerfile](base/Dockerfile).
+- Kept local and CI builds aligned by relying on the Dockerfile default
+  for temporary overrides rather than duplicating override values in
+  [Makefile](Makefile) and
+  [.github/workflows/base-image.yml](.github/workflows/base-image.yml).
 
 ---
 

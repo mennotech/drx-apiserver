@@ -12,7 +12,7 @@
 # This image deliberately does NOT bake in any one downstream project's
 # modules, branding, or platform-specific deployment behavior.
 
-ARG PHP_BASE_IMAGE=php:8.3.30-apache-bookworm@sha256:daf3cad5642798e462a029e41d6347cba7f3362f7028f8e60c3623dbadc4e590
+ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793
 
 # -----------------------------------------------------------------------------
 # Stage 1: builder — installs Composer dependencies into a writable layer.
@@ -82,6 +82,7 @@ FROM ${PHP_BASE_IMAGE} AS runtime
 ARG DRX_BASE_VERSION=0.0.0-dev
 ARG DRX_BASE_VCS_REF=unknown
 ARG DRX_BASE_BUILD_DATE=unknown
+ARG DRX_APT_SECURITY_OVERRIDES="libgnutls30=3.7.9-2+deb12u7 libgssapi-krb5-2=1.20.1-2+deb12u5 libk5crypto3=1.20.1-2+deb12u5 libkrb5-3=1.20.1-2+deb12u5 libkrb5support0=1.20.1-2+deb12u5"
 
 LABEL org.opencontainers.image.title="drx-drupal-base" \
       org.opencontainers.image.description="Reusable Drupal 10 base image for decoupled API backends." \
@@ -102,10 +103,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # .so libraries that those extensions link against.
 RUN set -eux; \
     apt-get update; \
-    # Pull all available security/bugfix updates for packages already
-    # present in the upstream PHP base image (notably apache2*) so the
-    # published image starts from the latest patched state at build time.
-    apt-get upgrade -y --no-install-recommends; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -120,6 +117,18 @@ RUN set -eux; \
         libzip4 \
         libpq5 \
         tini; \
+    # Optional, temporary exact-version overrides for already-installed
+    # packages (e.g. "openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2").
+    # This enables targeted CVE patching without a blanket dist-upgrade.
+    if [ -n "${DRX_APT_SECURITY_OVERRIDES}" ]; then \
+        for spec in ${DRX_APT_SECURITY_OVERRIDES}; do \
+            case "${spec}" in \
+                *=*) ;; \
+                *) echo "DRX_APT_SECURITY_OVERRIDES entries must use name=version (got: ${spec})"; exit 1 ;; \
+            esac; \
+        done; \
+        apt-get install -y --no-install-recommends --only-upgrade ${DRX_APT_SECURITY_OVERRIDES}; \
+    fi; \
     # linux-libc-dev ships in the upstream PHP base image as a build-time
     # dependency; it carries a long tail of kernel CVEs that never apply
     # at runtime (no kernel runs inside the container). Purge it.

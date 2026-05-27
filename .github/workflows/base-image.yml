@@ -1,9 +1,14 @@
 # Build, security-scan, and release the reusable drx-drupal-base image.
 #
-# Tag conventions (see base/README.md):
-#   - Push to main         -> publish "edge"
-#   - Tag vX.Y.Z           -> publish "X.Y.Z", "X.Y", "X", "latest"
-#   - Tag vX.Y.Z-rcN       -> publish "X.Y.Z-rcN" only (no floating tags)
+# Tag conventions (see base/README.md, RELEASES.md):
+#   Contract-version tags (SemVer of the base image runtime contract):
+#     - Push to main         -> publish "edge"
+#     - Tag vX.Y.Z           -> publish "X.Y.Z", "X.Y", "X", "latest"
+#     - Tag vX.Y.Z-rcN       -> publish "X.Y.Z-rcN" only (no floating tags)
+#   Drupal-version tags (informational; derived from base/composer.lock):
+#     - Tag vX.Y.Z           -> also publish "drupal-A.B.C", "drupal-A.B", "drupal-A"
+#     - Tag vX.Y.Z-rcN       -> also publish "drupal-A.B.C" only
+#     - Push to main         -> no drupal-* tags (use OCI label to inspect)
 #
 # Required repo permissions: contents:read, packages:write, id-token:write
 # (for SLSA provenance attestation), security-events:write (for scan SARIF).
@@ -54,6 +59,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract Drupal core version
+        id: drupal
+        run: |
+          set -euo pipefail
+          version=$(jq -r '
+            (.packages // [])[]
+            | select(.name == "drupal/core")
+            | .version
+          ' base/composer.lock | head -n1)
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "::error::drupal/core not found in base/composer.lock"
+            exit 1
+          fi
+          # Strip a leading "v" if present (composer usually omits it).
+          version="${version#v}"
+          # Expect MAJOR.MINOR.PATCH; reject anything else so we don't ship
+          # malformed informational tags.
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Unexpected drupal/core version format: $version"
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          echo "version=$version"        >> "$GITHUB_OUTPUT"
+          echo "major=$major"            >> "$GITHUB_OUTPUT"
+          echo "minor=$major.$minor"     >> "$GITHUB_OUTPUT"
+          echo "Drupal core version: $version"
+
       - name: Derive image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -67,11 +101,15 @@ jobs:
             type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-') }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' && !contains(github.ref, '-') }}
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=drupal-${{ steps.drupal.outputs.version }},enable=${{ github.event_name == 'release' }}
+            type=raw,value=drupal-${{ steps.drupal.outputs.minor }},enable=${{ github.event_name == 'release' && !contains(github.ref, '-') }}
+            type=raw,value=drupal-${{ steps.drupal.outputs.major }},enable=${{ github.event_name == 'release' && !contains(github.ref, '-') }}
           labels: |
             org.opencontainers.image.title=drx-drupal-base
             org.opencontainers.image.description=Reusable Drupal 10 base image for decoupled API backends.
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.licenses=GPL-2.0-or-later
+            org.mennotech.drx.drupal.version=${{ steps.drupal.outputs.version }}
 
       - name: Build (load locally for scan)
         uses: docker/build-push-action@v6
@@ -107,16 +145,57 @@ jobs:
         if: always()
         run: docker rm -f drx-smoke || true
 
-      - name: Trivy vulnerability scan
+      - name: Trivy gate scan (CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: drx-drupal-base:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          hide-progress: true
+
+      - name: Trivy SARIF report (non-gating)
+        if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: drx-drupal-base:ci
           format: sarif
           output: trivy.sarif
-          severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
           hide-progress: true
+
+      - name: Print Trivy SARIF summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -s trivy.sarif ]; then
+            echo "trivy.sarif not found or empty"
+            exit 0
+          fi
+
+          total=$(jq '[.runs[]?.results[]?] | length' trivy.sarif)
+          echo "Trivy SARIF results: ${total}"
+
+          if [ "$total" -eq 0 ]; then
+            echo "No findings in SARIF output"
+            exit 0
+          fi
+
+          echo "::group::Trivy findings (ruleId | level | message)"
+          jq -r '
+            .runs[]?.results[]?
+            | [
+                (.ruleId // "unknown-rule"),
+                (.level // "unknown-level"),
+                ((.message.text // "") | gsub("\\n"; " "))
+              ]
+            | @tsv
+          ' trivy.sarif \
+            | sed 's/\t/ | /g' \
+            | head -n 200
+          echo "::endgroup::"
 
       - name: Upload scan results
         if: always()
