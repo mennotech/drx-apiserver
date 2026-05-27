@@ -13,7 +13,8 @@ permissions:
 
 env:
   IMAGE_REF: ghcr.io/${{ github.repository_owner }}/drx-apiserver
-  TRIVY_SEVERITY: CRITICAL,HIGH
+  TRIVY_SEVERITY_SARIF: CRITICAL,HIGH
+  TRIVY_SEVERITY_JSON: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 
 jobs:
   resolve-targets:
@@ -75,7 +76,7 @@ jobs:
           image-ref: ${{ matrix.digest_ref }}
           format: sarif
           output: trivy-${{ matrix.artifact_name }}.sarif
-          severity: ${{ env.TRIVY_SEVERITY }}
+          severity: ${{ env.TRIVY_SEVERITY_SARIF }}
           ignore-unfixed: true
           exit-code: '0'
           hide-progress: true
@@ -86,7 +87,7 @@ jobs:
           image-ref: ${{ matrix.digest_ref }}
           format: json
           output: trivy-${{ matrix.artifact_name }}.json
-          severity: ${{ env.TRIVY_SEVERITY }}
+          severity: ${{ env.TRIVY_SEVERITY_JSON }}
           ignore-unfixed: true
           exit-code: '0'
           hide-progress: true
@@ -118,6 +119,8 @@ jobs:
           MATRIX_RELEASE_TAGS_JSON: ${{ toJSON(matrix.release_tags) }}
           MATRIX_SUPPORT_LINES_JSON: ${{ toJSON(matrix.support_lines) }}
           MATRIX_CATEGORY: ${{ matrix.category }}
+          SARIF_SEVERITY_SCOPE: ${{ env.TRIVY_SEVERITY_SARIF }}
+          JSON_SEVERITY_SCOPE: ${{ env.TRIVY_SEVERITY_JSON }}
         run: ./.github/scripts/summarize-trivy-findings.sh
 
       - name: Upload scan artifacts
