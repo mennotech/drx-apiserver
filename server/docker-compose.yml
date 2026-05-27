@@ -12,7 +12,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-apiserver:dev}
-    image: drx-apiserver:dev
+    image: ${APP_IMAGE:-drx-apiserver-demo:dev}
     ports:
       - "8088:80"
     environment:
@@ -37,3 +37,4 @@ services:
 volumes:
   backend_drupal_files:
   backend_drupal_db:
+  

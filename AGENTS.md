@@ -58,8 +58,8 @@ Local commands (see [Makefile](Makefile)):
 - `make smoke` — boot the base image and wait for the healthcheck to
   report `healthy`. This is the minimum local check before pushing
   changes to `base/`.
-- `make app` / `make up` / `make down` — build and run the reference
-  overlay via [docker-compose.yml](docker-compose.yml).
+- `make build` / `make up` / `make down` — build and run the reference
+  overlay via [server/docker-compose.yml](server/docker-compose.yml).
 - `make clean` — remove build artifacts and local image tags.
 
 Override `VERSION`, `BASE_IMAGE`, `APP_IMAGE`, or `SMOKE_PORT` on the

@@ -73,8 +73,12 @@ Local orchestration is via [Makefile](Makefile):
 | ------------ | ------------------------------------------------------- |
 | `make base`  | Build `drx-apiserver:dev` locally from [base/](base/). |
 | `make app`   | Build the reference overlay from [server/](server/).   |
-| `make up`    | Bring up the reference app via Docker Compose.          |
+| `make build` | Alias of `make app`.                                    |
+| `make up`    | Bring up the reference app via Docker Compose (no rebuild). |
+| `make up-build` | Rebuild the reference app, then bring it up.        |
 | `make down`  | Stop the reference app.                                 |
+| `make up-base` | Run only the base image (no reference overlay).      |
+| `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
 | `make clean` | Remove build artifacts and local image tags.            |
 
@@ -89,8 +93,12 @@ it to Trivy via `--input`, so `make verify CONTAINER_ENGINE=podman`
 works the same on Docker, macOS/Windows `podman machine`, and rootless
 or rootful Linux Podman. CI still runs the Docker path.
 
+Compose orchestration is intentionally rooted in [Makefile](Makefile):
+the compose definition lives in [server/docker-compose.yml](server/docker-compose.yml),
+and supported local workflows run via `make` from the repository root.
+
 The reference app expects `DRUPAL_ADMIN_PASS` to be set (in `.env` or the
-shell). See [docker-compose.yml](docker-compose.yml) for the full set of
+shell). See [server/docker-compose.yml](server/docker-compose.yml) for the full set of
 overridable variables.
 
 ---

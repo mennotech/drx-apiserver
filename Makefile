@@ -2,8 +2,12 @@
 #
 # `make base`   — build the reusable drx-apiserver base image locally
 # `make app`    — build the reference app on top of it
-# `make up`     — bring up the reference app via docker compose
+# `make build`  — alias of `make app`
+# `make up`     — bring up the reference app via docker compose (no rebuild)
+# `make up-build` — rebuild app image, then bring it up
 # `make down`   — stop the reference app
+# `make up-base` — run only the base image locally
+# `make down-base` — stop the base-only local container
 # `make smoke`  — boot the base image and hit its healthcheck
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
@@ -12,6 +16,9 @@
 BASE_IMAGE   ?= drx-apiserver:dev
 APP_IMAGE    ?= drx-apiserver-demo:dev
 SMOKE_PORT   ?= 8089
+BASE_UP_PORT ?= 8087
+BASE_UP_CONTAINER ?= drx-base
+BASE_UP_ADMIN_PASS ?= dev-password
 VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -27,12 +34,15 @@ BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 # `make verify CONTAINER_ENGINE=podman` with no other configuration.
 CONTAINER_ENGINE  ?= docker
 COMPOSE           ?= $(CONTAINER_ENGINE) compose
+COMPOSE_FILE      ?= server/docker-compose.yml
+COMPOSE_PROJECT   ?= drx-apiserver
+COMPOSE_ARGS      ?= -f $(COMPOSE_FILE) --project-directory . -p $(COMPOSE_PROJECT)
 
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
 
-.PHONY: base app up down smoke scan verify clean
+.PHONY: base app build up up-build down up-base down-base smoke scan verify clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -43,13 +53,26 @@ base:
 		./base
 
 app: base
-	DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) build
+	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) build
 
-up: app
-	$(COMPOSE) up -d
+build: app
+
+up:
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d
+
+up-build: app up
 
 down:
-	$(COMPOSE) down
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down
+
+up-base: base
+	@$(CONTAINER_ENGINE) rm -f $(BASE_UP_CONTAINER) >/dev/null 2>&1 || true
+	$(CONTAINER_ENGINE) run -d --name $(BASE_UP_CONTAINER) \
+		-e DRUPAL_ADMIN_PASS=$(BASE_UP_ADMIN_PASS) \
+		-p $(BASE_UP_PORT):80 $(BASE_IMAGE)
+
+down-base:
+	@$(CONTAINER_ENGINE) rm -f $(BASE_UP_CONTAINER) >/dev/null 2>&1 || true
 
 # The healthcheck script is invoked directly via `$(CONTAINER_ENGINE) exec`
 # rather than read from `.State.Health.Status`, so this target works the
@@ -109,5 +132,5 @@ verify: smoke scan
 	@echo "verify ok"
 
 clean:
-	$(COMPOSE) down -v 2>/dev/null || true
+	$(COMPOSE) $(COMPOSE_ARGS) down -v 2>/dev/null || true
 	-$(CONTAINER_ENGINE) rmi $(APP_IMAGE) $(BASE_IMAGE)
