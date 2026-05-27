@@ -17,6 +17,15 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Changed
+
+#### Supported-line security scan maintainability
+- Refactored [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml) to move long inline Bash logic into dedicated, testable scripts under `.github/scripts/`:
+  - `.github/scripts/resolve-supported-scan-targets.sh`
+  - `.github/scripts/write-trivy-scan-metadata.sh`
+  - `.github/scripts/summarize-trivy-findings.sh`
+- Added `actions/checkout@v4` to both jobs so repository-hosted CI scripts are available at runtime.
+
 ## [2026-05-27] (drx-apiserver v0.0.3-rc3)
 
 ### Added
