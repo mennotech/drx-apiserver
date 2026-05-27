@@ -17,6 +17,8 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+## [2026-05-27] (drx-apiserver v0.0.3-rc3)
+
 ### Added
 
 #### Supported-line daily security scan

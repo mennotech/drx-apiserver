@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.3-rc3] - 2026-05-27
+
+### Changed
+- Canonical published image name changed from `drx-drupal-base` to
+  `drx-apiserver` (`ghcr.io/mennotech/drx-apiserver`). The image title,
+  bootstrap log banner, generated-settings comments, and other operator
+  facing text were updated to match the new distribution name.
+
 ## [0.0.2-rc2] - 2026-05-26
 
 ### Security
