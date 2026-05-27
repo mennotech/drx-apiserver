@@ -17,6 +17,10 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+---
+
+## [2026-05-27] (drx-apiserver v0.0.4-rc4)
+
 ### Changed
 
 #### Local dev image orchestration
@@ -41,6 +45,8 @@ versioned — entries are grouped by the date of the corresponding
 - Split supported-line scan severities by artifact: SARIF upload remains `CRITICAL,HIGH` for high-signal code-scanning alerts, while JSON artifacts now include `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL` for full downstream automation visibility.
 - Fixed a summary-script jq failure when counting `UNKNOWN` vulnerabilities in Trivy JSON.
 - Switched SARIF limiting to Trivy's built-in `limit-severities-for-sarif` input and removed the custom post-processing filter step.
+
+---
 
 ## [2026-05-27] (drx-apiserver v0.0.3-rc3)
 
