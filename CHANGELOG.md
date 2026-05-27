@@ -17,6 +17,24 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
+
+### Changed
+
+#### Base image release hardening / determinism
+- Refreshed the pinned upstream PHP base image digest in
+  [base/Dockerfile](base/Dockerfile) from
+  `php:8.3.30-apache-bookworm` to
+  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
+- Reworked runtime package patching to avoid non-deterministic blanket
+  upgrades and use explicit, temporary exact-version overrides via
+  `DRX_APT_SECURITY_OVERRIDES`, with a single source of truth in
+  [base/Dockerfile](base/Dockerfile).
+- Kept local and CI builds aligned by relying on the Dockerfile default
+  for temporary overrides rather than duplicating override values in
+  [Makefile](Makefile) and
+  [.github/workflows/base-image.yml](.github/workflows/base-image.yml).
+
 ## [2026-05-26] (drx-drupal-base v0.0.1-rc2)
 
 ### Added

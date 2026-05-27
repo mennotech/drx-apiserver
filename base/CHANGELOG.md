@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.2-rc2] - 2026-05-26
+
+### Security
+- Runtime package patching is now deterministic by default: the
+  `apt-get upgrade` blanket update was removed from the runtime image
+  build, and a targeted, temporary override mechanism was added via the
+  `DRX_APT_SECURITY_OVERRIDES` build arg in `base/Dockerfile`. Overrides
+  must be explicit `name=version` pairs (for example,
+  `openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2`) and are applied
+  with `apt-get install --only-upgrade`. This allows maintainers to patch
+  specific CVEs ahead of an upstream base digest refresh, then remove the
+  override once the pinned parent image includes the fix.
+- Refreshed the pinned upstream PHP base image from
+  `php:8.3.30-apache-bookworm` to
+  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
+- Set a temporary default value for `DRX_APT_SECURITY_OVERRIDES`
+  directly in `base/Dockerfile` (single source of truth) to apply
+  exact-version upgrades for `libgnutls30` and Kerberos runtime
+  libraries (`libgssapi-krb5-2`, `libk5crypto3`, `libkrb5-3`,
+  `libkrb5support0`) until the pinned upstream base digest includes
+  those fixed package versions.
+
 ## [0.0.1-rc2] - 2026-05-26
 
 ### Fixed

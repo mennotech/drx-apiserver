@@ -223,5 +223,25 @@ Downstream projects should:
 - The image is built from a pinned PHP base image digest; releases include
   SBOM + provenance.
 
+### Targeted apt security overrides (build-time)
+
+The runtime stage avoids blanket `apt-get upgrade` so builds remain
+deterministic relative to the pinned upstream base digest. For urgent CVE
+patches that are not yet present in that digest, maintainers can pass
+temporary exact-version overrides at build time:
+
+```bash
+docker build \
+  --build-arg DRX_APT_SECURITY_OVERRIDES="openssl=3.0.20-1~deb12u1 apache2=2.4.67-1~deb12u2" \
+  -t drx-drupal-base:dev ./base
+```
+
+Rules:
+
+- Use `name=version` pairs only.
+- Keep overrides temporary; remove them once the pinned upstream digest
+  includes the fix.
+- Prefer patching only the packages tied to active security findings.
+
 Report security issues privately to the maintainer; do not file public
 issues for embargoed CVEs.
