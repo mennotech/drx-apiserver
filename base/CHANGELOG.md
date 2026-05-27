@@ -41,6 +41,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
   file already exists at boot it is treated as an operator-supplied
   override and the auto-render is skipped).
+- `DRX_LITESTREAM_RESTORE_TXID` (optional; pins restore to a specific
+  hex TXID, e.g. taken from a `drx_litestream` marker export).
+- `DRX_LITESTREAM_RESTORE_TIMESTAMP` (optional; RFC3339 timestamp to
+  restore at). Mutually exclusive with `_RESTORE_TXID`; TXID wins.
 - Credentials are passed through using litestream-native env vars
   (`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, or the
   AWS_*-style equivalents).

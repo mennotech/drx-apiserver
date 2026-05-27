@@ -63,6 +63,12 @@ export DRX_LITESTREAM_RESTORE_ON_BOOT="${DRX_LITESTREAM_RESTORE_ON_BOOT:-if-empt
 # Operator escape hatch: if set and the file exists, used verbatim instead
 # of the generated config. The path must be readable inside the container.
 export DRX_LITESTREAM_CONFIG_FILE="${DRX_LITESTREAM_CONFIG_FILE:-/etc/litestream.yml}"
+# Point-in-time pinning for restore (optional, mutually exclusive; TXID
+# wins if both are set). Typically supplied from a drx_litestream marker
+# export to reproduce an exact state on a dev/test machine. Honoured
+# regardless of restore policy when restore actually runs.
+export DRX_LITESTREAM_RESTORE_TXID="${DRX_LITESTREAM_RESTORE_TXID:-}"
+export DRX_LITESTREAM_RESTORE_TIMESTAMP="${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}"
 
 # Logging ---------------------------------------------------------------------
 drx::log()  { printf '[drx] %s\n' "$*" >&2; }

@@ -131,6 +131,18 @@ drx::litestream::restore() {
         restore_flags+=(-if-db-not-exists)
     fi
 
+    # Optional point-in-time pin. When DRX_LITESTREAM_RESTORE_TXID is set
+    # (e.g. taken from a drx_litestream marker export), restore up to and
+    # including that transaction instead of the latest. Mutually exclusive
+    # with DRX_LITESTREAM_RESTORE_TIMESTAMP; TXID wins if both are set.
+    if [ -n "${DRX_LITESTREAM_RESTORE_TXID:-}" ]; then
+        drx::log "litestream: pinning restore to txid=${DRX_LITESTREAM_RESTORE_TXID}"
+        restore_flags+=(-txid "${DRX_LITESTREAM_RESTORE_TXID}")
+    elif [ -n "${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}" ]; then
+        drx::log "litestream: pinning restore to timestamp=${DRX_LITESTREAM_RESTORE_TIMESTAMP}"
+        restore_flags+=(-timestamp "${DRX_LITESTREAM_RESTORE_TIMESTAMP}")
+    fi
+
     if sudo -E -u www-data litestream restore \
             -config "${DRX_LITESTREAM_CONFIG_FILE}" \
             "${restore_flags[@]}" \
