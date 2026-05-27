@@ -21,9 +21,12 @@ versioned — entries are grouped by the date of the corresponding
 
 #### Local dev image orchestration
 - Updated [Makefile](Makefile) target semantics so `make up` no longer rebuilds images by default; it now only starts the stack from the currently available image.
-- Added `make up-build` as an explicit convenience target that rebuilds the app image (`make app`) and then starts the stack.
-- Aligned app-image tagging between [Makefile](Makefile) and [docker-compose.yml](docker-compose.yml): Compose now uses `image: ${APP_IMAGE:-drx-apiserver-demo:dev}` and Makefile exports `APP_IMAGE` for `build`, `up`, and `down`.
+- Added `make up-build` as an explicit convenience target that rebuilds the app image (`make build`) and then starts the stack.
+- Aligned app-image tagging between [Makefile](Makefile) and [server/docker-compose.yml](server/docker-compose.yml): Compose now uses `image: ${APP_IMAGE:-drx-apiserver-demo:dev}` and Makefile exports `APP_IMAGE` for `build`, `up`, and `down`.
 - Removed the prior `drx-apiserver:dev` app-image tag collision with the base-image default, which could cause the reference overlay (`server/config`, hooks, modules) to be skipped at runtime when the wrong local image was started.
+- Moved the reference Compose file from repo root to [server/docker-compose.yml](server/docker-compose.yml), and made [Makefile](Makefile) call Compose with explicit `-f`, `--project-directory`, and project name arguments so local orchestration remains root-driven and predictable.
+- Renamed the app image build target from `make app` to `make build` for clearer intent in workflows like `make up-build`.
+- Added `make up-base` and `make down-base` to run or stop only the pure base image locally without bringing up the reference overlay stack.
 
 #### Supported-line security scan maintainability
 - Refactored [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml) to move long inline Bash logic into dedicated, testable scripts under `.github/scripts/`:
@@ -255,7 +258,7 @@ commit.
   `TRIVY_SEVERITY` keep the local gate in lock-step with the workflow
   so they cannot drift.
 - `make verify` is the recommended pre-push gate; chains `smoke` + `scan`.
-- [docker-compose.yml](docker-compose.yml) recast as a **documented
+- [server/docker-compose.yml](server/docker-compose.yml) recast as a **documented
   consumer example** that layers the reference overlay on top of
   `${DRX_BASE_IMAGE:-drx-drupal-base:dev}`; no longer the product
   definition.
@@ -301,7 +304,7 @@ commit.
 ## Conventions
 
 - Entries here describe changes to the **repository as a project**:
-  workflows under `.github/`, `Makefile`, `docker-compose.yml`,
+  workflows under `.github/`, `Makefile`, `server/docker-compose.yml`,
   top-level docs, repository tooling, contributor process.
 - Entries describing the **runtime behaviour of the published image**
   (env vars, hooks, on-disk layout, Drupal/PHP/Apache versions, CVE
