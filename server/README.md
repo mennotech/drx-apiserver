@@ -23,18 +23,27 @@ and [Makefile](../Makefile). For the runtime contract the base provides
 | [schema/](schema/) | Source-of-truth `drx-schema` YAML. Not consumed at runtime. |
 | [config/](config/) | Generated Drupal config sync payload (committed). |
 | [modules/custom/](modules/custom/) | Drop-in directory for project custom modules. Empty placeholder today. |
+| [hooks/post-install.d/](hooks/post-install.d/) | Hooks that run after Drupal install and before config import. |
 | [hooks/post-config-import.d/](hooks/post-config-import.d/) | Hooks that run after the base imports `config/`. |
 | [hooks/post-modules.d/](hooks/post-modules.d/) | Hooks that run after module enablement. |
 
 ### Hooks shipped here
 
+- `post-install.d/05-enable-views-and-theme.sh` — enables field-type
+  provider modules (`datetime`, `options`, `text`, `views`) and the Claro
+  admin theme before config import, so config payloads can resolve all
+  module and field-type dependencies.
 - `post-modules.d/10-enable-navigation.sh` — enables the Navigation module.
+- `post-modules.d/20-enable-views-ui.sh` — enables the Views UI admin
+  module so editors can manage views from `/admin/structure/views`.
 - `post-config-import.d/10-jsonapi-write-mode.sh` — flips JSON:API to
   read/write. The base image keeps JSON:API read-only by default; this
   is the documented per-project opt-in.
 - `post-config-import.d/20-seed-notes.sh` — creates a few example
   `note` nodes on first boot. Guarded by the `drx_apiserver.notes_seeded`
   state key, so it runs exactly once per site.
+- `post-config-import.d/30-set-front-page.sh` — sets the site front
+  page to `/notes` (the Notes view path).
 
 ## The content model: `note`
 
@@ -47,7 +56,7 @@ node title):
 | `field_status` | list (string) | `draft` / `published` / `archived`. Defaults to `draft`. |
 | `field_pinned` | boolean | Optional. |
 | `field_due_date` | date | Optional. |
-| `field_tags` | text, multi-value | Free-form tags. |
+| `field_note_tags` | text, multi-value | Free-form tags. |
 | `field_category` | list (string) | `personal`, `work`, `project`, `idea`, `reference`, `other`. |
 
 Once the container is healthy, the seed hook produces three notes
