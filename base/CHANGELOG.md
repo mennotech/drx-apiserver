@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Scaffolding for SQLite backup/restore via Litestream. The pinned
+  `litestream` binary (v0.5.11) is now bundled in the runtime image at
+  `/usr/local/bin/litestream`, and a new bootstrap library
+  `lib/litestream.sh` is sourced by `init.sh`. The feature is **off by
+  default**: `drx::litestream::enabled` returns false unless a future
+  release wires the activation env vars and `DRX_LITESTREAM_ENABLED=1`
+  is set. No runtime behaviour changes in this release; subsequent
+  releases will add config rendering, restore-on-boot, and writer
+  lifecycle wrapping.
+
 ## [0.0.3-rc3] - 2026-05-27
 
 ### Changed

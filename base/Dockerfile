@@ -14,6 +14,38 @@
 
 ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793
 
+# Pinned litestream release. Bump in concert with base/CHANGELOG.md.
+# Asset URL pattern is:
+#   https://github.com/benbjohnson/litestream/releases/download/v${V}/litestream-${V}-linux-${ARCH}.tar.gz
+ARG LITESTREAM_VERSION=0.5.11
+
+# -----------------------------------------------------------------------------
+# Stage 1a: litestream-fetch — pull a pinned, architecture-correct litestream
+# binary into a tiny scratch-friendly layer. Kept separate from the PHP
+# builder so that bumping LITESTREAM_VERSION does not bust the (much larger)
+# composer install cache.
+# -----------------------------------------------------------------------------
+FROM debian:bookworm-slim AS litestream-fetch
+
+ARG LITESTREAM_VERSION
+ARG TARGETARCH
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    case "${TARGETARCH:-amd64}" in \
+        amd64) LS_ARCH=x86_64 ;; \
+        arm64) LS_ARCH=arm64 ;; \
+        *) echo "Unsupported TARGETARCH=${TARGETARCH}"; exit 1 ;; \
+    esac; \
+    url="https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-${LS_ARCH}.tar.gz"; \
+    echo "Fetching ${url}"; \
+    curl -fsSL -o /tmp/litestream.tar.gz "${url}"; \
+    tar -xzf /tmp/litestream.tar.gz -C /usr/local/bin litestream; \
+    chmod 0755 /usr/local/bin/litestream; \
+    /usr/local/bin/litestream version
+
 # -----------------------------------------------------------------------------
 # Stage 1: builder — installs Composer dependencies into a writable layer.
 # -----------------------------------------------------------------------------
@@ -139,6 +171,10 @@ RUN set -eux; \
 # Bring compiled PHP extensions and their config in from the builder stage.
 COPY --from=builder /usr/local/lib/php/extensions/        /usr/local/lib/php/extensions/
 COPY --from=builder /usr/local/etc/php/conf.d/            /usr/local/etc/php/conf.d/
+
+# Litestream binary for SQLite backup/restore (feature is off by default;
+# downstream activates via DRX_LITESTREAM_ENABLED=1 and replica env vars).
+COPY --from=litestream-fetch /usr/local/bin/litestream    /usr/local/bin/litestream
 
 # Apache configuration: Drupal docroot, required modules, hardening.
 RUN set -eux; \

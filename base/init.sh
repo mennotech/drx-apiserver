@@ -39,6 +39,8 @@ drx::log "drx-apiserver ${DRX_BASE_VERSION:-unknown} starting bootstrap"
 . "${DRX_LIB_DIR}/config_import.sh"
 # shellcheck source=lib/api.sh
 . "${DRX_LIB_DIR}/api.sh"
+# shellcheck source=lib/litestream.sh
+. "${DRX_LIB_DIR}/litestream.sh"
 
 drx::run_hooks pre-bootstrap.d
 
