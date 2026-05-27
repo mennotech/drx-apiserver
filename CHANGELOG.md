@@ -17,34 +17,8 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
-### Changed
-
-#### CI diagnostics
-- `.github/workflows/base-image.yml` now includes a post-scan step that
-  parses `trivy.sarif` and prints a concise findings summary to the job
-  log (`ruleId | level | message`). This keeps SARIF upload/code-scanning
-  behavior unchanged while making failed Trivy runs easier to debug
-  directly from the Actions log output.
 
 ## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
-
-### Changed
-
-#### Base image release hardening / determinism
-- Refreshed the pinned upstream PHP base image digest in
-  [base/Dockerfile](base/Dockerfile) from
-  `php:8.3.30-apache-bookworm` to
-  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
-- Reworked runtime package patching to avoid non-deterministic blanket
-  upgrades and use explicit, temporary exact-version overrides via
-  `DRX_APT_SECURITY_OVERRIDES`, with a single source of truth in
-  [base/Dockerfile](base/Dockerfile).
-- Kept local and CI builds aligned by relying on the Dockerfile default
-  for temporary overrides rather than duplicating override values in
-  [Makefile](Makefile) and
-  [.github/workflows/base-image.yml](.github/workflows/base-image.yml).
-
-## [2026-05-26] (drx-drupal-base v0.0.1-rc2)
 
 ### Added
 
@@ -138,12 +112,32 @@ versioned — entries are grouped by the date of the corresponding
   procedure.
 
 ### Changed
-- Field `tags` in [server/schema/notes.yml](server/schema/notes.yml)
-  renamed to `note_tags` (generates `field_note_tags`) for clarity and
-  to defensively avoid any future collision with profiles that pre-create
-  a `field_tags` storage.
 
----
+#### CI diagnostics
+- `.github/workflows/base-image.yml` now includes a post-scan step that
+  parses `trivy.sarif` and prints a concise findings summary to the job
+  log (`ruleId | level | message`). This keeps SARIF upload/code-scanning
+  behavior unchanged while making failed Trivy runs easier to debug
+  directly from the Actions log output.
+- Trivy scanning in CI is split into two explicit phases: a gating
+  table scan (`CRITICAL,HIGH`, `ignore-unfixed`, `exit-code: 1`) to match
+  local `make scan` behavior, followed by a non-gating SARIF generation
+  step (`exit-code: 0`) used only for code-scanning upload and log
+  diagnostics.
+
+#### Base image release hardening / determinism
+- Refreshed the pinned upstream PHP base image digest in
+  [base/Dockerfile](base/Dockerfile) from
+  `php:8.3.30-apache-bookworm` to
+  `php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793`.
+- Reworked runtime package patching to avoid non-deterministic blanket
+  upgrades and use explicit, temporary exact-version overrides via
+  `DRX_APT_SECURITY_OVERRIDES`, with a single source of truth in
+  [base/Dockerfile](base/Dockerfile).
+- Kept local and CI builds aligned by relying on the Dockerfile default
+  for temporary overrides rather than duplicating override values in
+  [Makefile](Makefile) and
+  [.github/workflows/base-image.yml](.github/workflows/base-image.yml).
 
 ---
 
