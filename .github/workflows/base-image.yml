@@ -156,6 +156,37 @@ jobs:
           exit-code: '1'
           hide-progress: true
 
+      - name: Print Trivy SARIF summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -s trivy.sarif ]; then
+            echo "trivy.sarif not found or empty"
+            exit 0
+          fi
+
+          total=$(jq '[.runs[]?.results[]?] | length' trivy.sarif)
+          echo "Trivy SARIF results: ${total}"
+
+          if [ "$total" -eq 0 ]; then
+            echo "No findings in SARIF output"
+            exit 0
+          fi
+
+          echo "::group::Trivy findings (ruleId | level | message)"
+          jq -r '
+            .runs[]?.results[]?
+            | [
+                (.ruleId // "unknown-rule"),
+                (.level // "unknown-level"),
+                ((.message.text // "") | gsub("\\n"; " "))
+              ]
+            | @tsv
+          ' trivy.sarif \
+            | sed 's/\t/ | /g' \
+            | head -n 200
+          echo "::endgroup::"
+
       - name: Upload scan results
         if: always()
         uses: github/codeql-action/upload-sarif@v3

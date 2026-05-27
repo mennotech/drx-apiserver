@@ -17,6 +17,15 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Changed
+
+#### CI diagnostics
+- `.github/workflows/base-image.yml` now includes a post-scan step that
+  parses `trivy.sarif` and prints a concise findings summary to the job
+  log (`ruleId | level | message`). This keeps SARIF upload/code-scanning
+  behavior unchanged while making failed Trivy runs easier to debug
+  directly from the Actions log output.
+
 ## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
 
 ### Changed
