@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# drx-drupal-base
+# drx-apiserver
 # Reusable, production-oriented Drupal 10 base image.
 #
 # Downstream images extend this base by:
@@ -84,7 +84,7 @@ ARG DRX_BASE_VCS_REF=unknown
 ARG DRX_BASE_BUILD_DATE=unknown
 ARG DRX_APT_SECURITY_OVERRIDES="libgnutls30=3.7.9-2+deb12u7 libgssapi-krb5-2=1.20.1-2+deb12u5 libk5crypto3=1.20.1-2+deb12u5 libkrb5-3=1.20.1-2+deb12u5 libkrb5support0=1.20.1-2+deb12u5"
 
-LABEL org.opencontainers.image.title="drx-drupal-base" \
+LABEL org.opencontainers.image.title="drx-apiserver" \
       org.opencontainers.image.description="Reusable Drupal 10 base image for decoupled API backends." \
       org.opencontainers.image.source="https://github.com/mennotech/drx-apiserver" \
       org.opencontainers.image.licenses="GPL-2.0-or-later" \

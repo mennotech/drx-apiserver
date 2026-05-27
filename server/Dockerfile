@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 #
-# drx-apiserver — reference implementation built on drx-drupal-base.
+# drx-apiserver — reference implementation built on the drx-apiserver base image.
 #
 # This Dockerfile demonstrates the recommended downstream consumption
 # pattern: take an immutable base-image tag, COPY in project-specific
 # modules / config / hooks, and let the base bootstrap handle the rest.
 
-ARG BASE_IMAGE=drx-drupal-base:dev
+ARG BASE_IMAGE=drx-apiserver:dev
 FROM ${BASE_IMAGE}
 
 # Project custom modules (Drupal scaffold installer paths handle the rest).

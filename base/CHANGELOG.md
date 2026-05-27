@@ -1,4 +1,4 @@
-# Changelog — drx-drupal-base
+# Changelog — drx-apiserver base image
 
 All notable changes to the reusable base image are documented here.
 The base image follows semantic versioning with respect to its **runtime

@@ -1,6 +1,6 @@
 # drx-apiserver
 
-Reusable, production-oriented Drupal 10 base image (`drx-drupal-base`) for
+Reusable, production-oriented Drupal 10 base image (`drx-apiserver`) for
 projects that use Drupal as the data, auth, and security backend behind a
 decoupled frontend — plus a reference application overlay (`server/`) that
 shows how to consume it.
@@ -8,7 +8,7 @@ shows how to consume it.
 The base image is published to the GitHub Container Registry (GHCR) at:
 
 ```
-ghcr.io/mennotech/drx-drupal-base
+ghcr.io/mennotech/drx-apiserver
 ```
 
 | Document                              | Audience                                |
@@ -16,6 +16,7 @@ ghcr.io/mennotech/drx-drupal-base
 | [base/README.md](base/README.md)      | Image consumers — runtime contract, env vars, hooks, security posture. |
 | [base/CHANGELOG.md](base/CHANGELOG.md)| Image consumers — runtime contract release notes (Keep a Changelog). |
 | [RELEASES.md](RELEASES.md)            | Operators — published versions, tag policy, cadence, upgrade guidance. |
+| [SUPPORT.md](SUPPORT.md)              | Operators — supported image lines and continuous vulnerability monitoring scope. |
 | [CHANGELOG.md](CHANGELOG.md)          | Contributors — repository-level changes (CI, docs, tooling). |
 
 ---
@@ -23,8 +24,8 @@ ghcr.io/mennotech/drx-drupal-base
 ## Repository layout
 
 ```
-base/      Reusable drx-drupal-base image (published to GHCR).
-server/    Reference downstream overlay (separate publishable artifact).
+base/      Reusable drx-apiserver base image (published to GHCR).
+server/    Reference downstream overlay (not published).
 .github/   CI/CD workflows (build, scan, multi-arch publish, SBOM, provenance).
 Makefile   Local build, smoke, and compose orchestration.
 ```
@@ -41,7 +42,7 @@ points described in [base/README.md](base/README.md).
 Pin to an immutable tag in production:
 
 ```dockerfile
-ARG BASE_IMAGE=ghcr.io/mennotech/drx-drupal-base:0.1.0
+ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
 # Custom modules, config sync payload, lifecycle hooks.
@@ -55,7 +56,7 @@ Run the published image directly:
 ```bash
 docker run --rm -p 8088:80 \
   -e DRUPAL_ADMIN_PASS=change-me \
-  ghcr.io/mennotech/drx-drupal-base:0.1.0
+  ghcr.io/mennotech/drx-apiserver:0.1.0
 ```
 
 Full runtime environment contract (env vars, filesystem layout, hook
@@ -70,7 +71,7 @@ Local orchestration is via [Makefile](Makefile):
 
 | Target       | Purpose                                                 |
 | ------------ | ------------------------------------------------------- |
-| `make base`  | Build `drx-drupal-base:dev` locally from [base/](base/).|
+| `make base`  | Build `drx-apiserver:dev` locally from [base/](base/). |
 | `make app`   | Build the reference overlay from [server/](server/).   |
 | `make up`    | Bring up the reference app via Docker Compose.          |
 | `make down`  | Stop the reference app.                                 |
@@ -106,10 +107,13 @@ overridable variables.
 - **Tags published** (per [.github/workflows/base-image.yml](.github/workflows/base-image.yml)):
   - Stable release `vX.Y.Z` &rarr; `X.Y.Z`, `X.Y`, `X`, `latest`
   - Release candidate `vX.Y.Z-rcN` &rarr; `X.Y.Z-rcN` only
-  - Push to `main` &rarr; `edge`
+  - Push to `main` &rarr; no published image tags (CI/smoke only)
 - **Supply chain**: every published tag includes an SBOM and SLSA build
   provenance attestation. Images are scanned with Trivy
   (`CRITICAL`, `HIGH`, fail-on-fixed) before publish.
+- **Ongoing monitoring**: a daily workflow scans the currently supported
+  image lines (current + previous minor) and publishes SARIF alerts plus
+  downloadable JSON/SARIF artifacts. See [SUPPORT.md](SUPPORT.md).
 
 ---
 
@@ -143,7 +147,7 @@ overridable variables.
 ## License
 
 - Repository sources: MIT (see [LICENSE](LICENSE)).
-- Published `drx-drupal-base` image: contains Drupal core and is therefore
+- Published `drx-apiserver` image: contains Drupal core and is therefore
   distributed under **GPL-2.0-or-later** as reflected in the image's
   `org.opencontainers.image.licenses` label. Derived/extended images are
   likewise GPL-2.0-or-later.

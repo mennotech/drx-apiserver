@@ -3,7 +3,7 @@ catalog:
   reusable_bundles:
     - machine_name: note
       label: Note
-      description: "Simple notes content for the drx-apiserver reference deployment. Demonstrates how a downstream consumer of drx-drupal-base can ship a working content model on first boot by committing the Drupal config scaffold generated from this schema by drx-schema."
+      description: "Simple notes content for the drx-apiserver reference deployment. Demonstrates how a downstream consumer of the drx-apiserver base image can ship a working content model on first boot by committing the Drupal config scaffold generated from this schema by drx-schema."
       kind: supporting_record
       sections:
         - id: note_content

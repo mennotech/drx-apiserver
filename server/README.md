@@ -1,6 +1,6 @@
 # drx-apiserver — reference overlay
 
-This directory is the **reference consumer** of `drx-drupal-base`. It
+This directory is the **reference consumer** of the `drx-apiserver` base image. It
 demonstrates the recommended downstream pattern: take an immutable base
 image, layer in project-specific modules / config / hooks, and let the
 base bootstrap handle install and config import.
@@ -120,7 +120,7 @@ Then run the export, review the diff, and commit `schema/` and
 From the repo root:
 
 ```sh
-make app          # build drx-apiserver:dev on top of drx-drupal-base:dev
+make app          # build drx-apiserver:dev on top of drx-apiserver:dev
 make up           # docker compose up -d
 curl -s http://localhost:8088/jsonapi/node/note | jq '.data[].attributes.title'
 make down

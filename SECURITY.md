@@ -1,7 +1,7 @@
 # Security Policy
 
 Security is a first-class concern for `drx-apiserver` and the published
-`drx-drupal-base` image. This document describes how to report
+`drx-apiserver` image. This document describes how to report
 vulnerabilities and what to expect in response.
 
 ## Supported versions
@@ -65,7 +65,7 @@ and, with your permission, convert it to a public issue or discussion.
 
 In scope:
 
-- The published `drx-drupal-base` image and its build inputs in
+- The published `drx-apiserver` base image and its build inputs in
   [base/](base/).
 - The reference overlay in [server/](server/) when used as documented.
 - The CI/CD configuration in [.github/](.github/).

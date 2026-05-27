@@ -11,11 +11,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/);
 the project follows [Semantic Versioning](https://semver.org/) for the
 base image runtime contract (this top-level changelog is not itself
 versioned — entries are grouped by the date of the corresponding
-`drx-drupal-base` release).
+`drx-apiserver` release).
 
 ---
 
 ## [Unreleased]
+
+### Added
+
+#### Supported-line daily security scan
+- Added [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml), a daily/manual workflow that:
+  - resolves the latest patch in the current and previous supported minor
+    lines,
+  - resolves those tags to immutable image digests,
+  - deduplicates by digest,
+  - runs non-gating Trivy scans (`CRITICAL,HIGH`, `ignore-unfixed=true`),
+  - uploads SARIF to GitHub code scanning,
+  - uploads JSON/SARIF/metadata artifacts for downstream automation.
+- Added [SUPPORT.md](SUPPORT.md) to define supported image lines and
+  document where continuous-scan outputs are published.
+
+### Changed
+
+#### Image naming and publish model
+- Canonical published image name is now `drx-apiserver`
+  (`ghcr.io/mennotech/drx-apiserver`). Workflows, local defaults, and
+  operator-facing docs were updated accordingly.
+- Release/policy docs now explicitly state that `server/` is a
+  non-published reference overlay used for local development and
+  proof-of-concept flows.
+
+#### Base image publish behavior
+- `.github/workflows/base-image.yml` now publishes `drx-apiserver` to
+  GHCR only on GitHub Release events. Pushes to `main` still run CI and
+  smoke validation, but they no longer publish a branch-derived image
+  tag.
+- [RELEASES.md](RELEASES.md) and [base/README.md](base/README.md) were
+  updated to remove the `main`/`edge` publication path from the tag
+  policy.
 
 
 ## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
@@ -253,7 +286,7 @@ commit.
   fixes) belong in [base/CHANGELOG.md](base/CHANGELOG.md), not here.
 - Group entries under standard Keep a Changelog sections:
   `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
-- When a `drx-drupal-base` release is cut, move the current
-  `[Unreleased]` block under a new `[YYYY-MM-DD] (drx-drupal-base vX.Y.Z)`
+- When a `drx-apiserver` release is cut, move the current
+  `[Unreleased]` block under a new `[YYYY-MM-DD] (drx-apiserver vX.Y.Z)`
   heading so this changelog stays aligned with image releases without
   claiming a separate version of its own.
