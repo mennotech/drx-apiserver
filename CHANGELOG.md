@@ -17,6 +17,17 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Changed
+
+#### Base image publish behavior
+- `.github/workflows/base-image.yml` now publishes `drx-drupal-base` to
+  GHCR only on GitHub Release events. Pushes to `main` still run CI and
+  smoke validation, but they no longer publish a branch-derived image
+  tag.
+- [RELEASES.md](RELEASES.md) and [base/README.md](base/README.md) were
+  updated to remove the `main`/`edge` publication path from the tag
+  policy.
+
 
 ## [2026-05-26] (drx-drupal-base v0.0.2-rc2)
 

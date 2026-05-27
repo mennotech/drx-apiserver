@@ -50,7 +50,7 @@ The image is published with the following tag conventions:
 | `X`           | floating   | Latest minor within a major.                       |
 | `latest`      | floating   | Latest stable. Avoid in production.                |
 | `X.Y.Z-rcN`   | immutable  | Release candidate.                                 |
-| `edge`        | floating   | Tip of `main`. Not for production.                 |
+| `edge`        | n/a        | Not published by this workflow.                    |
 
 Versioning follows SemVer with respect to the **runtime contract** (env
 vars, hook lifecycle, on-disk layout, supported DB drivers, default

@@ -65,7 +65,7 @@ same image manifests:
 | ----------------------- | ------------------------------------------- | ---------- | ------------------------------- |
 | GitHub Release `vX.Y.Z` | `X.Y.Z`, `X.Y`, `X`, `latest`               | `X.Y.Z` immutable; others floating | Pin `X.Y.Z` in production. |
 | GitHub Release `vX.Y.Z-rcN` | `X.Y.Z-rcN`                             | Immutable  | Pre-production validation.      |
-| Push to `main`          | `edge`                                      | Floating   | Integration / smoke only.       |
+| Push to `main`          | none                                        | n/a        | CI / smoke only.                |
 | Pull request            | `pr-<NNN>` (built, **not** pushed)          | n/a        | Internal CI verification.       |
 
 ### Drupal-version tags (informational, derived from `base/composer.lock`)
@@ -87,8 +87,8 @@ shipped Drupal version is always discoverable via `docker inspect`.
 
 **Production guidance**: pin to an immutable tag — either contract
 (`X.Y.Z`) or Drupal (`drupal-A.B.C`) — and update via explicit version
-bumps. Avoid `latest`, `X.Y`, `X`, `drupal-A.B`, `drupal-A`, and `edge`
-in production.
+bumps. Avoid `latest`, `X.Y`, `X`, `drupal-A.B`, `drupal-A`, and any
+branch-derived CI image in production.
 
 Each published tag includes:
 

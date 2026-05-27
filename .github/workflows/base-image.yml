@@ -2,7 +2,7 @@
 #
 # Tag conventions (see base/README.md, RELEASES.md):
 #   Contract-version tags (SemVer of the base image runtime contract):
-#     - Push to main         -> publish "edge"
+#     - Push to main         -> run CI only; do not publish to GHCR
 #     - Tag vX.Y.Z           -> publish "X.Y.Z", "X.Y", "X", "latest"
 #     - Tag vX.Y.Z-rcN       -> publish "X.Y.Z-rcN" only (no floating tags)
 #   Drupal-version tags (informational; derived from base/composer.lock):
@@ -205,7 +205,7 @@ jobs:
           category: trivy-base-image
 
       - name: Build & push (multi-arch)
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'release'
         uses: docker/build-push-action@v6
         with:
           context: ./base
