@@ -31,7 +31,35 @@ class MarkerManager {
       'captured_at' => $data['captured_at'] ?? $this->time->getRequestTime(),
       'created_uid' => (int) $this->currentUser->id(),
       'notes' => $data['notes'] ?? '',
+      'kind' => $data['kind'] ?? 'live',
+      'consistent_at' => (int) ($data['consistent_at'] ?? 0),
+      'bucket' => $data['bucket'] ?? '',
+      's3_endpoint' => $data['s3_endpoint'] ?? '',
+      's3_region' => $data['s3_region'] ?? '',
+      's3_prefix_litestream' => $data['s3_prefix_litestream'] ?? '',
+      's3_prefix_private' => $data['s3_prefix_private'] ?? '',
+      's3_prefix_public' => $data['s3_prefix_public'] ?? '',
+      'base_image_ref' => $data['base_image_ref'] ?? '',
+      'drupal_site_uuid' => $data['drupal_site_uuid'] ?? '',
+      'verify_state' => $data['verify_state'] ?? '',
+      'verify_error' => $data['verify_error'] ?? '',
+      'verified_at' => (int) ($data['verified_at'] ?? 0),
     ])->execute();
+  }
+
+  /**
+   * Update a subset of fields on an existing marker.
+   *
+   * @param array<string, mixed> $fields
+   */
+  public function update(int $id, array $fields): void {
+    if (empty($fields)) {
+      return;
+    }
+    $this->db->update('drx_litestream_marker')
+      ->fields($fields)
+      ->condition('id', $id)
+      ->execute();
   }
 
   public function load(int $id): ?array {

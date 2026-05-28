@@ -31,6 +31,14 @@ drx_litestream.marker_add:
   requirements:
     _permission: 'administer drx litestream'
 
+drx_litestream.snapshot_add:
+  path: '/admin/config/drx/litestream/markers/snapshot'
+  defaults:
+    _form: '\Drupal\drx_litestream\Form\SnapshotForm'
+    _title: 'Capture consistent snapshot'
+  requirements:
+    _permission: 'administer drx litestream'
+
 drx_litestream.marker_view:
   path: '/admin/config/drx/litestream/markers/{id}'
   defaults:

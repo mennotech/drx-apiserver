@@ -69,10 +69,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `DRX_LITESTREAM_ENABLED` (default `0`).
 - `DRX_LITESTREAM_REPLICA_URL` (required when enabled, e.g.
   `s3://bucket/prefix`).
-- `DRX_LITESTREAM_ENDPOINT` (optional, for MinIO / S3-compatible).
-- `DRX_LITESTREAM_REGION` (default `us-east-1`).
-- `DRX_LITESTREAM_FORCE_PATH_STYLE` (auto: `true` when an endpoint is
-  set, otherwise `false`; override with `true`/`false`).
 - `DRX_LITESTREAM_SYNC_INTERVAL` (default `1s`).
 - `DRX_LITESTREAM_RESTORE_ON_BOOT` (default `if-empty`).
 - `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
@@ -82,6 +78,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   hex TXID, e.g. taken from a `drx_litestream` marker export).
 - `DRX_LITESTREAM_RESTORE_TIMESTAMP` (optional; RFC3339 timestamp to
   restore at). Mutually exclusive with `_RESTORE_TXID`; TXID wins.
+- `DRX_LITESTREAM_CLEAR_MAINTENANCE` (default `1`). After a successful
+  restore the bootstrap deletes the `system.maintenance_mode` row from
+  the restored DB's `key_value` table before Apache starts. Application-
+  consistent snapshots are captured *while* Drupal is in maintenance
+  mode, so without this clear-on-restore step a sidecar booted from a
+  consistent snapshot would come up serving 503 to every request and
+  its docker healthcheck would never go green. Set to `0` to preserve
+  whatever maintenance-mode value the snapshot contained (e.g. when
+  restoring deliberately into maintenance for manual inspection).
+- `DRX_LITESTREAM_CONTROL_SOCKET` (default `/var/run/litestream.sock`)
+  and `DRX_LITESTREAM_CONTROL_SOCKET_PERMS` (default `0666`). When set,
+  the generated litestream config enables a `socket:` block so the
+  replicate daemon listens for `litestream sync` / `litestream info`
+  RPCs. Required for application-consistent snapshot tooling to obtain
+  stable LTX-space TXIDs by force-flushing pending WAL frames on
+  demand instead of waiting for `sync-interval`. Set the path to an
+  empty string to disable the socket entirely.
 - Credentials are passed through using litestream-native env vars
   (`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, or the
   AWS_*-style equivalents).

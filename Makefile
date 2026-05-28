@@ -15,6 +15,7 @@
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
 # `make pit-drill` — local point-in-time drill (TXID-pinned restore from replica)
+# `make snapshot-drill` — local application-consistent snapshot drill (drx_litestream)
 # `make clean`  — remove build artifacts and the local image tags
 
 BASE_IMAGE   ?= drx-apiserver:dev
@@ -50,7 +51,7 @@ DR_DRILL_SYNC_WAIT      ?= 3
 STACK_TEST_TIMEOUT      ?= 180
 STACK_TEST_ADMIN_PASS   ?= stack-test-password
 
-.PHONY: base app build up up-build down up-base down-base smoke stack-test scan verify dr-drill pit-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke stack-test scan verify dr-drill pit-drill snapshot-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -275,7 +276,7 @@ pit-drill: up-build
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_LITESTREAM_ENABLED=1 \
 		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
-		-e DRX_LITESTREAM_ENDPOINT=http://minio:9000 \
+		-e DRX_S3_ENDPOINT=http://minio:9000 \
 		-e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
 		-e DRX_LITESTREAM_RESTORE_TXID=$$txid_a \
 		-e LITESTREAM_ACCESS_KEY_ID=minioadmin \
@@ -295,6 +296,89 @@ pit-drill: up-build
 		exit 1; \
 	fi; \
 	echo "PIT drill ok: TXID $$txid_a restored marker A"
+
+# Application-consistent snapshot drill:
+# 1) boot app + minio,
+# 2) call `drush drx:litestream:snapshot` (orchestrator quiesces + captures),
+# 3) verify the marker row carries kind='consistent' + a TXID,
+# 4) write a POST-snapshot marker B that should NOT appear in restore,
+# 5) boot a sidecar pinned to the snapshot TXID,
+# 6) assert the snapshot marker row is present and marker B is absent.
+# Proves the maintenance/checkpoint/wait consistency boundary is real.
+#
+# Set SKIP_BUILD=1 to reuse already-built images (much faster on
+# iterative runs that only touch hooks/, server/modules/, or the
+# Makefile itself — i.e. anything that doesn't change the Dockerfile
+# or composer.json).
+snapshot-drill: $(if $(SKIP_BUILD),up,up-build)
+	@echo "Starting snapshot drill (drx_litestream consistent capture)"
+	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	if [ -z "$$CID" ]; then echo "drx-apiserver container not found"; exit 1; fi; \
+	echo "Waiting for backend health..."; \
+	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
+		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $$CID 2>/dev/null || true )"; \
+		if [ "$$status" = "healthy" ]; then echo "healthy after $${i}s"; break; fi; \
+		if [ "$$status" = "unhealthy" ]; then echo "backend unhealthy"; $(CONTAINER_ENGINE) logs $$CID; exit 1; fi; \
+		sleep 1; \
+	done; \
+	label="snap-$$(date -u +%Y%m%dT%H%M%SZ)"; \
+	echo "Capturing consistent snapshot label=$$label"; \
+	snap_log="$$(mktemp)"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web drx:litestream:snapshot --label=$$label >"$$snap_log" 2>&1 || true; \
+	txid="$$(grep -Eo '^[0-9a-f]{16}$$' "$$snap_log" | tail -1)"; \
+	if [ -z "$$txid" ]; then \
+		echo "snapshot drill FAILED: no TXID returned"; \
+		echo "--- drush output ---"; cat "$$snap_log"; echo "--- end ---"; \
+		rm -f "$$snap_log"; exit 1; \
+	fi; \
+	rm -f "$$snap_log"; \
+	echo "Captured snapshot TXID = $$txid"; \
+	kind="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T drx-apiserver sqlite3 /var/drupal-db/db.sqlite \
+		"SELECT kind FROM drx_litestream_marker WHERE label='$$label';")"; \
+	if [ "$$kind" != "consistent" ]; then echo "snapshot drill FAILED: expected kind=consistent got '$$kind'"; exit 1; fi; \
+	echo "Writing POST-snapshot marker B that must NOT survive restore"; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web sql:query \
+		"DELETE FROM key_value WHERE collection='drx_snap'; INSERT INTO key_value (collection, name, value) VALUES ('drx_snap','postsnap','B');" >/dev/null; \
+	sleep $(DR_DRILL_SYNC_WAIT); \
+	net="$(COMPOSE_PROJECT)_default"; \
+	$(CONTAINER_ENGINE) rm -f drx-snap-pit >/dev/null 2>&1 || true; \
+	echo "Booting sidecar pinned to snapshot TXID"; \
+	$(CONTAINER_ENGINE) run -d --name drx-snap-pit --network $$net \
+		-e DRUPAL_ADMIN_PASS=ignored \
+		-e DRX_S3_REQUIRED=0 \
+		-e DRX_LITESTREAM_ENABLED=1 \
+		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
+		-e DRX_S3_ENDPOINT=http://minio:9000 \
+		-e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
+		-e DRX_LITESTREAM_RESTORE_TXID=$$txid \
+		-e LITESTREAM_ACCESS_KEY_ID=minioadmin \
+		-e LITESTREAM_SECRET_ACCESS_KEY=minioadmin \
+		$(BASE_IMAGE) >/dev/null; \
+	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
+		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' drx-snap-pit 2>/dev/null || true )"; \
+		if [ "$$status" = "healthy" ]; then echo "sidecar healthy after $${i}s"; break; fi; \
+		if [ "$$status" = "unhealthy" ]; then echo "sidecar unhealthy"; $(CONTAINER_ENGINE) logs drx-snap-pit; $(CONTAINER_ENGINE) rm -f drx-snap-pit >/dev/null; exit 1; fi; \
+		sleep 1; \
+	done; \
+	restored_label="$$($(CONTAINER_ENGINE) exec drx-snap-pit sqlite3 /var/drupal-db/db.sqlite \
+		"SELECT label FROM drx_litestream_marker WHERE label='$$label';")"; \
+	restored_post="$$($(CONTAINER_ENGINE) exec drx-snap-pit sqlite3 /var/drupal-db/db.sqlite \
+		"SELECT value FROM key_value WHERE collection='drx_snap' AND name='postsnap';")"; \
+	if [ "$$restored_label" != "$$label" ]; then \
+		echo "snapshot drill FAILED: snapshot marker row missing in restore (expected '$$label' got '$$restored_label')"; \
+		echo "--- sidecar marker dump ---"; \
+		$(CONTAINER_ENGINE) exec drx-snap-pit sqlite3 /var/drupal-db/db.sqlite "SELECT id,label,kind,txid,verify_state FROM drx_litestream_marker;" || true; \
+		echo "--- sidecar last 30 log lines ---"; \
+		$(CONTAINER_ENGINE) logs --tail 30 drx-snap-pit || true; \
+		$(CONTAINER_ENGINE) rm -f drx-snap-pit >/dev/null; \
+		exit 1; \
+	fi; \
+	$(CONTAINER_ENGINE) rm -f drx-snap-pit >/dev/null; \
+	if [ -n "$$restored_post" ]; then \
+		echo "snapshot drill FAILED: post-snapshot data leaked into restore (got '$$restored_post')"; \
+		exit 1; \
+	fi; \
+	echo "snapshot drill ok: marker row '$$label' present, post-snapshot mutation absent (TXID $$txid)"
 
 clean:
 	$(COMPOSE) $(COMPOSE_ARGS) down -v 2>/dev/null || true

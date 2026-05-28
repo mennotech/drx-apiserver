@@ -45,6 +45,57 @@ class LitestreamStatus {
   }
 
   /**
+   * Path to the litestream daemon control socket, or NULL if disabled.
+   *
+   * The base image (re)generates the litestream config with a
+   * `socket:` block honouring DRX_LITESTREAM_CONTROL_SOCKET. When that
+   * env var is set to an empty string the daemon does not listen and
+   * `litestream sync` cannot be used; callers must then fall back to
+   * polling the natural sync-interval.
+   */
+  public function getControlSocketPath(): ?string {
+    $v = getenv('DRX_LITESTREAM_CONTROL_SOCKET');
+    if ($v === FALSE) {
+      // Match the base default so this works even on older container
+      // images that have not exported the variable explicitly.
+      return '/var/run/litestream.sock';
+    }
+    $v = trim((string) $v);
+    return $v === '' ? NULL : $v;
+  }
+
+  /**
+   * Ask the litestream daemon to flush pending WAL frames now.
+   *
+   * Returns ['ok' => bool, 'output' => string]. On `ok = true` the
+   * caller can assume any committed-and-fsynced rows are durable on
+   * the configured replica when `-wait` is honoured. This is the
+   * mechanism that lets the snapshot orchestrator turn the natural
+   * sync-interval-bounded latency into an immediate, bounded-wait
+   * flush.
+   */
+  public function forceReplicaSync(int $timeoutSeconds = 30): array {
+    if (!$this->isEnabled()) {
+      return ['ok' => FALSE, 'output' => 'litestream disabled'];
+    }
+    $socket = $this->getControlSocketPath();
+    if ($socket === NULL) {
+      return ['ok' => FALSE, 'output' => 'control socket disabled (DRX_LITESTREAM_CONTROL_SOCKET is empty)'];
+    }
+    $bin = escapeshellarg($this->getBinary());
+    $db = escapeshellarg($this->getDatabasePath());
+    $sock = escapeshellarg($socket);
+    $to = (int) max(1, $timeoutSeconds);
+    $out = [];
+    $rc = 0;
+    @exec("$bin sync -socket $sock -wait -timeout $to $db 2>&1", $out, $rc);
+    return [
+      'ok' => $rc === 0,
+      'output' => implode("\n", $out),
+    ];
+  }
+
+  /**
    * Whether a `litestream replicate` process is running on this host.
    */
   public function isReplicating(): bool {

@@ -13,3 +13,21 @@ services:
       - '@http_client'
       - '@logger.factory'
       - '@datetime.time'
+  drx_litestream.snapshot_manifest_writer:
+    class: Drupal\drx_litestream\Service\SnapshotManifestWriter
+    arguments:
+      - '@drx_litestream.status'
+      - '@http_client'
+      - '@logger.factory'
+      - '@datetime.time'
+  drx_litestream.snapshot_orchestrator:
+    class: Drupal\drx_litestream\Service\SnapshotOrchestrator
+    arguments:
+      - '@drx_litestream.markers'
+      - '@drx_litestream.status'
+      - '@drx_litestream.snapshot_manifest_writer'
+      - '@state'
+      - '@lock'
+      - '@datetime.time'
+      - '@config.factory'
+      - '@logger.factory'

@@ -67,6 +67,15 @@ services:
       DRX_S3_PREFIX_LITESTREAM: ${DRX_S3_PREFIX_LITESTREAM:-litestream}
       DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
       DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
+      # Bridged Litestream env, set explicitly so out-of-band processes
+      # invoked via `docker compose exec` (drush, snapshot orchestrator,
+      # ops scripts) see the same values that base/lib/s3.sh derives at
+      # boot for the apache child. Without these the bridge only reaches
+      # the apache/litestream foreground process tree.
+      DRX_LITESTREAM_ENABLED: "1"
+      DRX_LITESTREAM_REPLICA_URL: s3://${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_LITESTREAM:-litestream}
+      LITESTREAM_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      LITESTREAM_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     restart: unless-stopped
 
 volumes:

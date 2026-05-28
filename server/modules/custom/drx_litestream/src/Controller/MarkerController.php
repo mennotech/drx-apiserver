@@ -58,6 +58,7 @@ class MarkerController extends ControllerBase {
             '#url' => Url::fromRoute('drx_litestream.marker_view', ['id' => (int) $m['id']]),
           ],
         ],
+        $m['kind'] ?? 'live',
         $m['txid'] !== '' ? $m['txid'] : '—',
         !empty($m['captured_at']) ? $this->formatSiteDate((int) $m['captured_at']) : '—',
         $m['replica_url'] !== '' ? $m['replica_url'] : '—',
@@ -68,17 +69,28 @@ class MarkerController extends ControllerBase {
     return [
       '#cache' => ['max-age' => 0],
       'add' => [
-        '#type' => 'link',
-        '#title' => $this->t('+ Capture marker'),
-        '#url' => Url::fromRoute('drx_litestream.marker_add'),
-        '#attributes' => ['class' => ['button', 'button--primary']],
+        '#type' => 'container',
+        '#attributes' => ['style' => 'display: flex; gap: 0.5em;'],
         '#prefix' => '<p>',
         '#suffix' => '</p>',
+        'snapshot' => [
+          '#type' => 'link',
+          '#title' => $this->t('+ Capture consistent snapshot'),
+          '#url' => Url::fromRoute('drx_litestream.snapshot_add'),
+          '#attributes' => ['class' => ['button', 'button--primary']],
+        ],
+        'live' => [
+          '#type' => 'link',
+          '#title' => $this->t('+ Capture live marker'),
+          '#url' => Url::fromRoute('drx_litestream.marker_add'),
+          '#attributes' => ['class' => ['button']],
+        ],
       ],
       'table' => [
         '#type' => 'table',
         '#header' => [
           $this->t('Label'),
+          $this->t('Kind'),
           $this->t('TXID'),
           $this->t('Captured at'),
           $this->t('Replica URL'),
@@ -145,29 +157,62 @@ class MarkerController extends ControllerBase {
    * @param array<string, mixed> $m
    */
   protected function buildPayload(array $m): array {
-    return [
-      'schema' => 'drx-litestream-marker/v1',
+    $kind = (string) ($m['kind'] ?? 'live');
+    $payload = [
+      'schema' => 'drx-litestream-marker/v2',
       'uuid' => $m['uuid'],
       'label' => $m['label'],
+      'kind' => $kind,
       'description' => $m['description'] ?? '',
       'replica_url' => $m['replica_url'] ?? '',
       'txid' => $m['txid'] ?? '',
       'captured_at' => !empty($m['captured_at']) ? $this->formatIsoDate((int) $m['captured_at']) : NULL,
       'notes' => $m['notes'] ?? '',
-      'dev_restore_hint' => [
-        'shell' => sprintf(
-          'litestream restore -txid %s -o ./dev.sqlite %s',
-          escapeshellarg($m['txid'] ?? ''),
-          escapeshellarg($m['replica_url'] ?? ''),
-        ),
-        'docker_env' => [
-          'DRX_LITESTREAM_ENABLED' => '1',
-          'DRX_LITESTREAM_REPLICA_URL' => $m['replica_url'] ?? '',
-          'DRX_LITESTREAM_RESTORE_ON_BOOT' => 'always',
-          'DRX_LITESTREAM_RESTORE_TXID' => $m['txid'] ?? '',
-        ],
-      ],
     ];
+
+    if ($kind === 'consistent') {
+      $payload['consistent_at'] = !empty($m['consistent_at'])
+        ? $this->formatIsoDate((int) $m['consistent_at'])
+        : NULL;
+      $payload['source'] = [
+        'bucket' => $m['bucket'] ?? '',
+        's3_endpoint' => $m['s3_endpoint'] ?? '',
+        's3_region' => $m['s3_region'] ?? '',
+        'prefixes' => [
+          'litestream' => $m['s3_prefix_litestream'] ?? '',
+          'private' => $m['s3_prefix_private'] ?? '',
+          'public' => $m['s3_prefix_public'] ?? '',
+        ],
+        'base_image_ref' => $m['base_image_ref'] ?? '',
+        'drupal_site_uuid' => $m['drupal_site_uuid'] ?? '',
+      ];
+      $payload['verify'] = [
+        'state' => $m['verify_state'] ?? '',
+        'error' => $m['verify_error'] ?? '',
+        'verified_at' => !empty($m['verified_at'])
+          ? $this->formatIsoDate((int) $m['verified_at'])
+          : NULL,
+      ];
+    }
+
+    $payload['dev_restore_hint'] = [
+      'shell' => sprintf(
+        'litestream restore -txid %s -o ./dev.sqlite %s',
+        escapeshellarg($m['txid'] ?? ''),
+        escapeshellarg($m['replica_url'] ?? ''),
+      ),
+      'docker_env' => [
+        'DRX_LITESTREAM_ENABLED' => '1',
+        'DRX_LITESTREAM_REPLICA_URL' => $m['replica_url'] ?? '',
+        'DRX_LITESTREAM_RESTORE_ON_BOOT' => 'always',
+        'DRX_LITESTREAM_RESTORE_TXID' => $m['txid'] ?? '',
+      ],
+      'note' => $kind === 'consistent'
+        ? 'For full point-in-time restore (DB + files), clone the source bucket up to consistent_at (using S3 object versions) into a new bucket, then boot a fresh image with DRX_S3_BUCKET=<new-bucket> plus the docker_env above.'
+        : 'Live markers pin only the DB TXID. File state is whatever is currently in the bucket.',
+    ];
+
+    return $payload;
   }
 
   protected function formatSiteDate(int $timestamp): string {

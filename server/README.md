@@ -231,7 +231,6 @@ Two equivalent paths, both using values from the exported JSON:
    docker run --rm \
      -e DRX_LITESTREAM_ENABLED=1 \
      -e DRX_LITESTREAM_REPLICA_URL=<REPLICA_URL> \
-     -e DRX_LITESTREAM_ENDPOINT=<endpoint, if any> \
      -e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
      -e DRX_LITESTREAM_RESTORE_TXID=<TXID> \
      -e LITESTREAM_ACCESS_KEY_ID=<key> \

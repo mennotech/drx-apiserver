@@ -95,9 +95,6 @@ export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 # The inline default in drx::litestream::enabled (:-0) handles the unset case.
 export DRX_LITESTREAM_ENABLED
 export DRX_LITESTREAM_REPLICA_URL="${DRX_LITESTREAM_REPLICA_URL:-}"
-export DRX_LITESTREAM_ENDPOINT="${DRX_LITESTREAM_ENDPOINT:-}"
-export DRX_LITESTREAM_REGION="${DRX_LITESTREAM_REGION:-us-east-1}"
-export DRX_LITESTREAM_FORCE_PATH_STYLE="${DRX_LITESTREAM_FORCE_PATH_STYLE:-}"
 export DRX_LITESTREAM_SYNC_INTERVAL="${DRX_LITESTREAM_SYNC_INTERVAL:-1s}"
 # Restore policy: if-empty (default) | always | never.
 #   if-empty: restore only when the SQLite file is missing or has no tables
@@ -113,6 +110,14 @@ export DRX_LITESTREAM_CONFIG_FILE="${DRX_LITESTREAM_CONFIG_FILE:-/etc/litestream
 # regardless of restore policy when restore actually runs.
 export DRX_LITESTREAM_RESTORE_TXID="${DRX_LITESTREAM_RESTORE_TXID:-}"
 export DRX_LITESTREAM_RESTORE_TIMESTAMP="${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}"
+# Litestream control socket. The replicate daemon listens here for
+# `litestream sync`, `litestream info`, etc. The orchestrator running
+# inside Drupal uses this to flush pending WAL frames to S3 before
+# reading the LTX TXID for application-consistent snapshots. Set to
+# an empty string to disable the socket entirely (snapshots will fall
+# back to polling sync-interval, but with no force-flush capability).
+export DRX_LITESTREAM_CONTROL_SOCKET="${DRX_LITESTREAM_CONTROL_SOCKET:-/var/run/litestream.sock}"
+export DRX_LITESTREAM_CONTROL_SOCKET_PERMS="${DRX_LITESTREAM_CONTROL_SOCKET_PERMS:-0666}"
 
 # Logging ---------------------------------------------------------------------
 drx::log()  { printf '[drx] %s\n' "$*" >&2; }

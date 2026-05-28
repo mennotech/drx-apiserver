@@ -24,10 +24,79 @@ function drx_litestream_schema(): array {
         'captured_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
         'created_uid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
         'notes' => ['type' => 'text', 'size' => 'normal', 'not null' => FALSE],
+        // Consistent-snapshot fields. `kind`='live' is a best-effort grab
+        // of the current TXID; `kind`='consistent' was captured while
+        // the site was in maintenance mode with a forced WAL checkpoint
+        // and a replica catch-up wait — safe to use as a restore pin.
+        'kind' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => 'live'],
+        // Wall-clock at which the snapshot quiesce window ended. The
+        // pin for bucket-versioned file restore: "for each object in
+        // private/ and public/, take the latest version with
+        // LastModified <= consistent_at".
+        'consistent_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        // Source bucket identity. Recorded so the exported marker is a
+        // self-contained restore recipe regardless of current env.
+        'bucket' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        's3_endpoint' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+        's3_region' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+        's3_prefix_litestream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        's3_prefix_private' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        's3_prefix_public' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        // Sanity-check fields used on restore to detect environment drift.
+        'base_image_ref' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE, 'default' => ''],
+        'drupal_site_uuid' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+        // Post-capture verification that the replica reached the pinned TXID.
+        'verify_state' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''],
+        'verify_error' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+        'verified_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
       ],
       'primary key' => ['id'],
       'unique keys' => ['uuid' => ['uuid']],
-      'indexes' => ['captured_at' => ['captured_at']],
+      'indexes' => [
+        'captured_at' => ['captured_at'],
+        'kind_captured_at' => ['kind', 'captured_at'],
+      ],
     ],
   ];
+}
+
+/**
+ * Add consistent-snapshot metadata columns to drx_litestream_marker.
+ */
+function drx_litestream_update_9001(): string {
+  $schema = \Drupal::database()->schema();
+  $table = 'drx_litestream_marker';
+
+  $columns = [
+    'kind' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => 'live'],
+    'consistent_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+    'bucket' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+    's3_endpoint' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+    's3_region' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+    's3_prefix_litestream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+    's3_prefix_private' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+    's3_prefix_public' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+    'base_image_ref' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE, 'default' => ''],
+    'drupal_site_uuid' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+    'verify_state' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''],
+    'verify_error' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+    'verified_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+  ];
+
+  foreach ($columns as $name => $spec) {
+    if (!$schema->fieldExists($table, $name)) {
+      $schema->addField($table, $name, $spec);
+    }
+  }
+
+  if (!$schema->indexExists($table, 'kind_captured_at')) {
+    $schema->addIndex($table, 'kind_captured_at', ['kind', 'captured_at'], [
+      'fields' => [
+        'kind' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => 'live'],
+        'captured_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      ],
+    ]);
+  }
+
+  return 'Added consistent-snapshot columns to drx_litestream_marker.';
 }

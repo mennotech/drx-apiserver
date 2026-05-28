@@ -37,24 +37,19 @@ drx::s3::validate_env() {
     fi
 }
 
-# Map the shared S3 connection onto Litestream's existing env-var contract
-# so litestream.sh keeps working unchanged. Operator-supplied DRX_LITESTREAM_*
-# values still win — only unset variables are filled in here.
+# Map the shared S3 connection onto Litestream's env-var contract.
+# The image now consumes DRX_S3_* directly for endpoint / region / path-style
+# and only bridges the replica URL + credentials here.
 drx::s3::bridge_litestream() {
     drx::s3::required || return 0
     [ -n "${DRX_S3_BUCKET}" ] || return 0
 
     : "${DRX_LITESTREAM_ENABLED:=1}"
     : "${DRX_LITESTREAM_REPLICA_URL:=s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}}"
-    : "${DRX_LITESTREAM_ENDPOINT:=${DRX_S3_ENDPOINT}}"
-    : "${DRX_LITESTREAM_REGION:=${DRX_S3_REGION}}"
-    : "${DRX_LITESTREAM_FORCE_PATH_STYLE:=${DRX_S3_FORCE_PATH_STYLE}}"
     : "${LITESTREAM_ACCESS_KEY_ID:=${DRX_S3_ACCESS_KEY_ID}}"
     : "${LITESTREAM_SECRET_ACCESS_KEY:=${DRX_S3_SECRET_ACCESS_KEY}}"
 
     export DRX_LITESTREAM_ENABLED DRX_LITESTREAM_REPLICA_URL \
-           DRX_LITESTREAM_ENDPOINT DRX_LITESTREAM_REGION \
-           DRX_LITESTREAM_FORCE_PATH_STYLE \
            LITESTREAM_ACCESS_KEY_ID LITESTREAM_SECRET_ACCESS_KEY
 }
 

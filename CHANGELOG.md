@@ -70,6 +70,64 @@ versioned — entries are grouped by the date of the corresponding
   and the admin / dev-restore workflow in
   [server/README.md](server/README.md#litestream-replication-admin-ui-and-dev-restore).
 
+#### Application-consistent snapshots (drx_litestream overlay)
+- `drx_litestream` now captures **application-consistent** point-in-time
+  markers via a new `SnapshotOrchestrator` service. The orchestrator
+  acquires Drupal's core `cron` lock (the same lock `\Drupal\Core\Cron::run()`
+  itself holds — every cron invocation short-circuits while the snapshot
+  runs), enables maintenance mode, drains briefly, nudges the SQLite
+  WAL forward with a non-blocking `PRAGMA wal_checkpoint(PASSIVE)`,
+  waits for the Litestream replica to reach the post-checkpoint TXID,
+  writes the marker row, and waits one more time so the marker UPDATE
+  itself is on the replica. Maintenance mode and the cron lock are
+  released in `finally`, and SIGINT/SIGTERM handlers run the same
+  cleanup on hard termination.
+- Marker schema bumped to v2 in
+  [drx_litestream.install](server/modules/custom/drx_litestream/drx_litestream.install)
+  (`hook_update_9001`): new columns `kind` (`live`/`consistent`),
+  `consistent_at`, `bucket`, `s3_endpoint`, `s3_region`, the three
+  prefix columns, `base_image_ref`, `drupal_site_uuid`, and
+  `verify_state`/`verify_error`/`verified_at`. Existing rows backfill
+  to `kind='live'`.
+- Exported marker JSON (schema `drx-litestream-marker/v2`) now includes
+  a full `source` block (bucket + endpoint + region + prefixes + base
+  image ref + site UUID) and a `consistent_at` wall-clock pin, making
+  the marker a self-contained restore recipe. The dev_restore_hint
+  documents the bucket-clone-at-`consistent_at` step required for full
+  DB-plus-files point-in-time restore.
+- New admin route `/admin/config/drx/litestream/markers/snapshot`
+  (form: `SnapshotForm`) and a "Capture consistent snapshot" primary
+  button on the markers list page, alongside the existing live capture.
+- New drush command `drush drx:litestream:snapshot --label=<label>`
+  (alias `drx-lit-snap`) that runs the orchestrator and prints the
+  captured TXID on stdout. Uses Drush 12's static `create(ContainerInterface)`
+  DI pattern; no `drush.services.yml` file is needed.
+- Tunable env vars for the orchestrator (all optional):
+  `DRX_LITESTREAM_SNAPSHOT_DRAIN_SECS` (default `3`),
+  `DRX_LITESTREAM_SNAPSHOT_TIMEOUT` (replica catch-up, default `30`),
+  `DRX_LITESTREAM_SNAPSHOT_LOCK_TTL` (cron lock TTL, default `900`),
+  `DRX_LITESTREAM_SNAPSHOT_LOCK_WAIT` (cron-busy wait, default `10`).
+- Added `make snapshot-drill` to [Makefile](Makefile): captures a
+  consistent snapshot via the new drush command, writes post-snapshot
+  data that must NOT survive restore, boots a sidecar pinned to the
+  snapshot TXID, and asserts both (a) the snapshot marker row is
+  present and (b) the post-snapshot mutation is absent. Proves the
+  consistency boundary is real end-to-end.
+- Hardened the orchestrator against Apache pile-up: WAL checkpoints
+  are now `PASSIVE` (not `TRUNCATE`) and the orchestrator's PDO sets
+  `busy_timeout=5000`, so a foreign-connection checkpoint no longer
+  takes a RESERVED lock that starves every Apache worker trying to
+  render the maintenance page. The redundant post-update checkpoint
+  was removed; Litestream's native sync loop ships the marker UPDATE
+  and `waitForReplica` already polls until it lands.
+- Added `pcntl_signal` handlers for SIGINT and SIGTERM in the
+  orchestrator so an interrupted snapshot (Ctrl-C, `docker stop`,
+  killed `docker compose exec` host process) releases the cron
+  semaphore row and clears maintenance mode instead of leaking a
+  stale lock that blocks both subsequent snapshots and Drupal cron
+  for 15 minutes. PHP's default shutdown-function path only runs on
+  SIGINT, not SIGTERM; explicit handlers close the gap.
+
 ---
 
 ## [2026-05-27] (drx-apiserver v0.0.4-rc4)
