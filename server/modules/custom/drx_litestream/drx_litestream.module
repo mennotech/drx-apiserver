@@ -7,7 +7,9 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
 
 /**
  * Implements hook_help().
@@ -17,4 +19,102 @@ function drx_litestream_help(string $route_name, RouteMatchInterface $route_matc
     return '<p>' . t('Surfaces litestream replication health and lets operators capture point-in-time markers for dev-machine restores. Requires the drx-apiserver base image with <code>DRX_LITESTREAM_ENABLED=1</code>.') . '</p>';
   }
   return '';
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function drx_litestream_requirements(string $phase): array {
+  $requirements = [];
+  if ($phase !== 'runtime') {
+    return $requirements;
+  }
+
+  /** @var \Drupal\drx_litestream\Service\LitestreamStatus $status */
+  $status = \Drupal::service('drx_litestream.status');
+  $local = $status->getLocalStatus();
+  $running = $status->isReplicating();
+  $replica_txid = $status->getReplicaLatestTxid();
+
+  $local_status = (string) ($local['status'] ?? 'unknown');
+  $local_txid = (string) ($local['local_txid'] ?? '—');
+  $wal_size = (string) ($local['wal_size'] ?? '—');
+  $replica_url = (string) ($status->getReplicaUrl() ?? '—');
+  $replica_txid_text = (is_string($replica_txid) && trim($replica_txid) !== '') ? $replica_txid : NULL;
+
+  $severity = REQUIREMENT_OK;
+  $value = t('Healthy');
+  $reasons = [];
+
+  if (!$status->isEnabled()) {
+    $severity = REQUIREMENT_WARNING;
+    $value = t('Disabled');
+    $reasons[] = t('DRX_LITESTREAM_ENABLED is not set to 1.');
+  }
+  else {
+    if (!$running) {
+      $severity = REQUIREMENT_ERROR;
+      $value = t('Failing');
+      $reasons[] = t('replicate daemon is not running');
+    }
+
+    if ($local_status === 'error') {
+      $severity = REQUIREMENT_ERROR;
+      $value = t('Failing');
+      $reasons[] = t('local status command returned an error');
+    }
+    elseif (!in_array(strtolower($local_status), ['ok', 'healthy'], TRUE)) {
+      if ($severity !== REQUIREMENT_ERROR) {
+        $severity = REQUIREMENT_WARNING;
+        $value = t('Degraded');
+      }
+      $reasons[] = t('local status is @status', ['@status' => $local_status]);
+    }
+
+    if ($replica_txid_text === NULL) {
+      if ($severity !== REQUIREMENT_ERROR) {
+        $severity = REQUIREMENT_WARNING;
+        $value = t('Degraded');
+      }
+      $reasons[] = t('replica latest TXID could not be read');
+    }
+    elseif ($local_txid !== '—' && strcasecmp($local_txid, $replica_txid_text) !== 0) {
+      if ($severity !== REQUIREMENT_ERROR) {
+        $severity = REQUIREMENT_WARNING;
+        $value = t('Degraded');
+      }
+      $reasons[] = t('replica appears behind local TXID');
+    }
+  }
+
+  $details = [
+    t('Daemon: @v', ['@v' => $running ? 'running' : 'not running']),
+    t('Local status: @v', ['@v' => $local_status !== '' ? $local_status : 'unknown']),
+    t('Local TXID: @v', ['@v' => $local_txid !== '' ? $local_txid : '—']),
+    t('Replica latest TXID: @v', ['@v' => $replica_txid_text ?? '—']),
+    t('WAL size: @v', ['@v' => $wal_size !== '' ? $wal_size : '—']),
+    t('Replica URL: @v', ['@v' => $replica_url]),
+  ];
+
+  if (!empty($reasons)) {
+    $details[] = t('Issues: @v', ['@v' => implode('; ', $reasons)]);
+  }
+
+  $details[] = Link::fromTextAndUrl(t('Open detailed litestream dashboard'), Url::fromRoute('drx_litestream.health'))->toString();
+
+  $paragraph = implode('<br>', array_map(
+    static fn($line) => (string) $line,
+    $details,
+  ));
+
+  $requirements['drx_litestream_replication'] = [
+    'title' => t('DrX Litestream replication'),
+    'value' => $value,
+    'severity' => $severity,
+    'description' => [
+      '#markup' => '<p>' . $paragraph . '</p>',
+    ],
+  ];
+
+  return $requirements;
 }

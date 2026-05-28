@@ -42,6 +42,7 @@ class HealthController extends ControllerBase {
 
     $local = $this->status->getLocalStatus();
     $replica_txid = $this->status->getReplicaLatestTxid();
+    $replica_txid_text = (is_string($replica_txid) && trim($replica_txid) !== '') ? $replica_txid : NULL;
     $running = $this->status->isReplicating();
     $mtime = $this->status->getLastDbMtime();
     $retention = $this->status->getRetentionInfo();
@@ -55,7 +56,7 @@ class HealthController extends ControllerBase {
       [$this->t('Local status'), $local['status'] ?? '—'],
       [$this->t('Local TXID'), $local['local_txid'] ?? '—'],
       [$this->t('WAL size'), $local['wal_size'] ?? '—'],
-      [$this->t('Replica latest TXID'), $replica_txid ?? '—'],
+      [$this->t('Replica latest TXID'), $replica_txid_text ?? '—'],
       [$this->t('DB last modified'), $mtime ? date('c', $mtime) : '—'],
       [$this->t('Remote backup size'), $this->formatRemoteSize($remote)],
       [$this->t('Remote object count'), $this->formatRemoteObjects($remote)],
