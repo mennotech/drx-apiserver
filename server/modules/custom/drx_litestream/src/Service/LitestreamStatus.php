@@ -192,4 +192,141 @@ class LitestreamStatus {
     return $info;
   }
 
+  /**
+   * Returns a redacted view of the live litestream config.
+   *
+   * @return array{ok:bool,text?:string,error?:string}
+   */
+  public function getSanitizedConfigSummary(): array {
+    $path = $this->getConfigPath();
+    if (!is_readable($path)) {
+      return ['ok' => FALSE, 'error' => 'config file not readable'];
+    }
+    try {
+      $data = Yaml::parseFile($path);
+    }
+    catch (\Throwable $e) {
+      return ['ok' => FALSE, 'error' => 'config parse error: ' . $e->getMessage()];
+    }
+    if (!is_array($data)) {
+      return ['ok' => FALSE, 'error' => 'unexpected config shape'];
+    }
+
+    $redacted = $this->redactSecrets($data);
+    return [
+      'ok' => TRUE,
+      'text' => Yaml::dump($redacted, 8, 2),
+    ];
+  }
+
+  /**
+   * Computes a unified replication health snapshot.
+   *
+   * @return array{
+   *   state:string,
+   *   enabled:bool,
+   *   running:bool,
+   *   local_status:string,
+   *   local_txid:string,
+   *   replica_txid:?string,
+   *   wal_size:string,
+   *   replica_url:string,
+   *   issues:array<int,string>,
+   * }
+   */
+  public function getHealthSnapshot(): array {
+    $local = $this->getLocalStatus();
+    $running = $this->isReplicating();
+    $replicaTxidRaw = $this->getReplicaLatestTxid();
+
+    $localStatus = (string) ($local['status'] ?? 'unknown');
+    $localTxid = (string) ($local['local_txid'] ?? '—');
+    $walSize = (string) ($local['wal_size'] ?? '—');
+    $replicaUrl = (string) ($this->getReplicaUrl() ?? '—');
+    $replicaTxid = (is_string($replicaTxidRaw) && trim($replicaTxidRaw) !== '')
+      ? $replicaTxidRaw
+      : NULL;
+
+    $state = 'healthy';
+    $issues = [];
+
+    if (!$this->isEnabled()) {
+      $state = 'disabled';
+      $issues[] = 'DRX_LITESTREAM_ENABLED is not set to 1.';
+    }
+    else {
+      if (!$running) {
+        $state = 'failing';
+        $issues[] = 'replicate daemon is not running';
+      }
+
+      if ($localStatus === 'error') {
+        $state = 'failing';
+        $issues[] = 'local status command returned an error';
+      }
+      elseif (!in_array(strtolower($localStatus), ['ok', 'healthy'], TRUE)) {
+        if ($state !== 'failing') {
+          $state = 'degraded';
+        }
+        $issues[] = sprintf('local status is %s', $localStatus);
+      }
+
+      if ($replicaTxid === NULL) {
+        if ($state !== 'failing') {
+          $state = 'degraded';
+        }
+        $issues[] = 'replica latest TXID could not be read';
+      }
+      elseif ($localTxid !== '—' && strcasecmp($localTxid, $replicaTxid) !== 0) {
+        if ($state !== 'failing') {
+          $state = 'degraded';
+        }
+        $issues[] = 'replica appears behind local TXID';
+      }
+    }
+
+    return [
+      'state' => $state,
+      'enabled' => $this->isEnabled(),
+      'running' => $running,
+      'local_status' => $localStatus !== '' ? $localStatus : 'unknown',
+      'local_txid' => $localTxid !== '' ? $localTxid : '—',
+      'replica_txid' => $replicaTxid,
+      'wal_size' => $walSize !== '' ? $walSize : '—',
+      'replica_url' => $replicaUrl,
+      'issues' => $issues,
+    ];
+  }
+
+  /**
+   * Recursively redact values for sensitive config keys.
+   */
+  protected function redactSecrets(mixed $value, ?string $key = NULL): mixed {
+    if (is_array($value)) {
+      $out = [];
+      foreach ($value as $k => $v) {
+        $out[$k] = $this->redactSecrets($v, (string) $k);
+      }
+      return $out;
+    }
+
+    if ($key !== NULL && $this->isSensitiveKey($key)) {
+      return '*** redacted ***';
+    }
+
+    return $value;
+  }
+
+  protected function isSensitiveKey(string $key): bool {
+    $k = strtolower($key);
+    return str_contains($k, 'password')
+      || str_contains($k, 'secret')
+      || str_contains($k, 'token')
+      || str_contains($k, 'private')
+      || str_contains($k, 'identity')
+      || str_contains($k, 'access-key')
+      || str_contains($k, 'account-key')
+      || str_contains($k, 'sse-customer-key');
+  }
+
 }

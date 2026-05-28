@@ -40,24 +40,31 @@ class HealthController extends ControllerBase {
       return $build;
     }
 
-    $local = $this->status->getLocalStatus();
-    $replica_txid = $this->status->getReplicaLatestTxid();
-    $replica_txid_text = (is_string($replica_txid) && trim($replica_txid) !== '') ? $replica_txid : NULL;
-    $running = $this->status->isReplicating();
+    $snapshot = $this->status->getHealthSnapshot();
     $mtime = $this->status->getLastDbMtime();
     $retention = $this->status->getRetentionInfo();
+    $cfg = $this->status->getSanitizedConfigSummary();
     $remote = $this->remote->getRemoteSize();
 
+    $stateText = [
+      'healthy' => (string) $this->t('Healthy'),
+      'degraded' => (string) $this->t('Degraded'),
+      'disabled' => (string) $this->t('Disabled'),
+      'failing' => (string) $this->t('Failing'),
+    ];
+    $overallState = $snapshot['state'];
+
     $rows = [
-      [$this->t('Replicate daemon'), $running ? $this->t('running') : $this->t('not running')],
+      [$this->t('Overall health'), $stateText[$overallState] ?? $this->t('Unknown')],
+      [$this->t('Replicate daemon'), $snapshot['running'] ? $this->t('running') : $this->t('not running')],
       [$this->t('Config file'), $this->status->getConfigPath()],
       [$this->t('Database path'), $this->status->getDatabasePath()],
       [$this->t('Replica URL'), $this->status->getReplicaUrl() ?? '—'],
-      [$this->t('Local status'), $local['status'] ?? '—'],
-      [$this->t('Local TXID'), $local['local_txid'] ?? '—'],
-      [$this->t('WAL size'), $local['wal_size'] ?? '—'],
-      [$this->t('Replica latest TXID'), $replica_txid_text ?? '—'],
-      [$this->t('DB last modified'), $mtime ? date('c', $mtime) : '—'],
+      [$this->t('Local status'), $snapshot['local_status']],
+      [$this->t('Local TXID'), $snapshot['local_txid']],
+      [$this->t('WAL size'), $snapshot['wal_size']],
+      [$this->t('Replica latest TXID'), $snapshot['replica_txid'] ?? '—'],
+      [$this->t('DB last modified'), $mtime ? $this->formatSiteDate((int) $mtime) : '—'],
       [$this->t('Remote backup size'), $this->formatRemoteSize($remote)],
       [$this->t('Remote object count'), $this->formatRemoteObjects($remote)],
       [$this->t('Remote size computed'), $this->formatComputedAt($remote)],
@@ -70,14 +77,10 @@ class HealthController extends ControllerBase {
     if (!empty($retention['snapshot_retention'])) {
       $rows[] = [$this->t('Snapshot retention'), $retention['snapshot_retention']];
     }
-
-    if (!empty($local['error'])) {
-      $build['error'] = [
-        '#markup' => '<pre>' . htmlspecialchars($local['error']) . '</pre>',
-        '#prefix' => '<div class="messages messages--error">',
-        '#suffix' => '</div>',
-      ];
+    if (!empty($snapshot['issues'])) {
+      $rows[] = [$this->t('Health issues'), implode('; ', $snapshot['issues'])];
     }
+
     if (!empty($remote['error'])) {
       $build['remote_error'] = [
         '#markup' => $this->t('Remote size probe error: @msg', ['@msg' => $remote['error']]),
@@ -91,6 +94,24 @@ class HealthController extends ControllerBase {
       '#header' => [$this->t('Metric'), $this->t('Value')],
       '#rows' => $rows,
     ];
+
+    if (!empty($cfg['ok']) && !empty($cfg['text'])) {
+      $build['config'] = [
+        '#type' => 'details',
+        '#title' => $this->t('Litestream config (sanitized)'),
+        '#open' => FALSE,
+        'body' => [
+          '#markup' => '<pre>' . htmlspecialchars((string) $cfg['text']) . '</pre>',
+        ],
+      ];
+    }
+    else {
+      $build['config_error'] = [
+        '#markup' => $this->t('Could not read litestream config summary: @msg', ['@msg' => $cfg['error'] ?? 'unknown error']),
+        '#prefix' => '<div class="messages messages--warning">',
+        '#suffix' => '</div>',
+      ];
+    }
 
     $build['actions'] = [
       '#type' => 'container',
@@ -139,11 +160,20 @@ class HealthController extends ControllerBase {
     if (empty($remote['computed_at'])) {
       return '—';
     }
-    $stamp = date('c', (int) $remote['computed_at']);
+    $stamp = $this->formatSiteDate((int) $remote['computed_at']);
     $suffix = !empty($remote['cached'])
       ? sprintf('cached, TTL %ds', (int) ($remote['ttl'] ?? 0))
       : sprintf('fresh, TTL %ds', (int) ($remote['ttl'] ?? 0));
     return sprintf('%s (%s)', $stamp, $suffix);
+  }
+
+  /**
+   * Format a timestamp using Drupal's configured date/time preferences.
+   */
+  protected function formatSiteDate(int $timestamp): string {
+    /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
+    $dateFormatter = \Drupal::service('date.formatter');
+    return $dateFormatter->format($timestamp, 'medium');
   }
 
   protected function humanBytes(int $bytes): string {

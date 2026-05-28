@@ -49,7 +49,7 @@ class MarkerController extends ControllerBase {
       $rows[] = [
         $m['label'],
         $m['txid'] !== '' ? $m['txid'] : '—',
-        $m['captured_at'] ? date('c', (int) $m['captured_at']) : '—',
+        !empty($m['captured_at']) ? $this->formatSiteDate((int) $m['captured_at']) : '—',
         $m['replica_url'] !== '' ? $m['replica_url'] : '—',
         ['data' => $ops],
       ];
@@ -93,7 +93,7 @@ class MarkerController extends ControllerBase {
       'description' => $m['description'] ?? '',
       'replica_url' => $m['replica_url'] ?? '',
       'txid' => $m['txid'] ?? '',
-      'captured_at' => !empty($m['captured_at']) ? date('c', (int) $m['captured_at']) : NULL,
+      'captured_at' => !empty($m['captured_at']) ? $this->formatIsoDate((int) $m['captured_at']) : NULL,
       'notes' => $m['notes'] ?? '',
       'dev_restore_hint' => [
         'shell' => sprintf(
@@ -115,6 +115,18 @@ class MarkerController extends ControllerBase {
     $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $m['label']);
     $resp->headers->set('Content-Disposition', sprintf('attachment; filename="marker-%s.json"', $name));
     return $resp;
+  }
+
+  protected function formatSiteDate(int $timestamp): string {
+    /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
+    $dateFormatter = \Drupal::service('date.formatter');
+    return $dateFormatter->format($timestamp, 'medium');
+  }
+
+  protected function formatIsoDate(int $timestamp): string {
+    return (new \DateTimeImmutable('@' . $timestamp))
+      ->setTimezone(new \DateTimeZone('UTC'))
+      ->format('c');
   }
 
 }

@@ -32,72 +32,36 @@ function drx_litestream_requirements(string $phase): array {
 
   /** @var \Drupal\drx_litestream\Service\LitestreamStatus $status */
   $status = \Drupal::service('drx_litestream.status');
-  $local = $status->getLocalStatus();
-  $running = $status->isReplicating();
-  $replica_txid = $status->getReplicaLatestTxid();
-
-  $local_status = (string) ($local['status'] ?? 'unknown');
-  $local_txid = (string) ($local['local_txid'] ?? '—');
-  $wal_size = (string) ($local['wal_size'] ?? '—');
-  $replica_url = (string) ($status->getReplicaUrl() ?? '—');
-  $replica_txid_text = (is_string($replica_txid) && trim($replica_txid) !== '') ? $replica_txid : NULL;
-
-  $severity = REQUIREMENT_OK;
-  $value = t('Healthy');
-  $reasons = [];
-
-  if (!$status->isEnabled()) {
-    $severity = REQUIREMENT_WARNING;
-    $value = t('Disabled');
-    $reasons[] = t('DRX_LITESTREAM_ENABLED is not set to 1.');
-  }
-  else {
-    if (!$running) {
-      $severity = REQUIREMENT_ERROR;
-      $value = t('Failing');
-      $reasons[] = t('replicate daemon is not running');
-    }
-
-    if ($local_status === 'error') {
-      $severity = REQUIREMENT_ERROR;
-      $value = t('Failing');
-      $reasons[] = t('local status command returned an error');
-    }
-    elseif (!in_array(strtolower($local_status), ['ok', 'healthy'], TRUE)) {
-      if ($severity !== REQUIREMENT_ERROR) {
-        $severity = REQUIREMENT_WARNING;
-        $value = t('Degraded');
-      }
-      $reasons[] = t('local status is @status', ['@status' => $local_status]);
-    }
-
-    if ($replica_txid_text === NULL) {
-      if ($severity !== REQUIREMENT_ERROR) {
-        $severity = REQUIREMENT_WARNING;
-        $value = t('Degraded');
-      }
-      $reasons[] = t('replica latest TXID could not be read');
-    }
-    elseif ($local_txid !== '—' && strcasecmp($local_txid, $replica_txid_text) !== 0) {
-      if ($severity !== REQUIREMENT_ERROR) {
-        $severity = REQUIREMENT_WARNING;
-        $value = t('Degraded');
-      }
-      $reasons[] = t('replica appears behind local TXID');
-    }
-  }
+  /** @var \Drupal\drx_litestream\Service\RemoteReplica $remote */
+  $remote = \Drupal::service('drx_litestream.remote_replica');
+  $snapshot = $status->getHealthSnapshot();
+  $remoteSize = $remote->getRemoteSize();
+  $severityMap = [
+    'healthy' => REQUIREMENT_OK,
+    'degraded' => REQUIREMENT_WARNING,
+    'disabled' => REQUIREMENT_WARNING,
+    'failing' => REQUIREMENT_ERROR,
+  ];
+  $valueMap = [
+    'healthy' => t('Healthy'),
+    'degraded' => t('Degraded'),
+    'disabled' => t('Disabled'),
+    'failing' => t('Failing'),
+  ];
+  $state = $snapshot['state'];
+  $severity = $severityMap[$state] ?? REQUIREMENT_WARNING;
+  $value = $valueMap[$state] ?? t('Unknown');
 
   $details = [
-    t('Daemon: @v', ['@v' => $running ? 'running' : 'not running']),
-    t('Local status: @v', ['@v' => $local_status !== '' ? $local_status : 'unknown']),
-    t('Local TXID: @v', ['@v' => $local_txid !== '' ? $local_txid : '—']),
-    t('Replica latest TXID: @v', ['@v' => $replica_txid_text ?? '—']),
-    t('WAL size: @v', ['@v' => $wal_size !== '' ? $wal_size : '—']),
-    t('Replica URL: @v', ['@v' => $replica_url]),
+    t('Daemon: @v', ['@v' => $snapshot['running'] ? 'running' : 'not running']),
+    t('Local status: @v', ['@v' => $snapshot['local_status']]),
+    t('WAL size: @v', ['@v' => $snapshot['wal_size']]),
+    t('Computed remote size: @v', ['@v' => drx_litestream_format_remote_size_for_requirements($remoteSize)]),
+    t('Replica URL: @v', ['@v' => $snapshot['replica_url']]),
   ];
 
-  if (!empty($reasons)) {
-    $details[] = t('Issues: @v', ['@v' => implode('; ', $reasons)]);
+  if (!empty($snapshot['issues'])) {
+    $details[] = t('Issues: @v', ['@v' => implode('; ', $snapshot['issues'])]);
   }
 
   $details[] = Link::fromTextAndUrl(t('Open detailed litestream dashboard'), Url::fromRoute('drx_litestream.health'))->toString();
@@ -117,4 +81,28 @@ function drx_litestream_requirements(string $phase): array {
   ];
 
   return $requirements;
+}
+
+/**
+ * Formats remote backup size for status report details.
+ *
+ * @param array<string, mixed> $remote
+ *   Result from RemoteReplica::getRemoteSize().
+ */
+function drx_litestream_format_remote_size_for_requirements(array $remote): string {
+  if (empty($remote['available'])) {
+    return (string) ($remote['error'] ?? '—');
+  }
+
+  $bytes = (int) ($remote['bytes'] ?? 0);
+  $objects = (int) ($remote['objects'] ?? 0);
+  $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+  $i = 0;
+  $v = (float) $bytes;
+  while ($v >= 1024 && $i < count($units) - 1) {
+    $v /= 1024;
+    $i++;
+  }
+
+  return sprintf('%.2f %s (%d objects)', $v, $units[$i], $objects);
 }
