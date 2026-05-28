@@ -31,6 +31,15 @@ drx_litestream.marker_add:
   requirements:
     _permission: 'administer drx litestream'
 
+drx_litestream.marker_view:
+  path: '/admin/config/drx/litestream/markers/{id}'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\MarkerController::view'
+    _title: 'Marker JSON'
+  requirements:
+    _permission: 'administer drx litestream'
+    id: \d+
+
 drx_litestream.marker_export:
   path: '/admin/config/drx/litestream/markers/{id}/export'
   defaults:
