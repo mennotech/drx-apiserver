@@ -67,13 +67,8 @@ services:
       DRX_S3_PREFIX_LITESTREAM: ${DRX_S3_PREFIX_LITESTREAM:-litestream}
       DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
       DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
-    volumes:
-      - backend_drupal_files:/var/www/html/web/sites/default/files
-      - backend_drupal_db:/var/drupal-db
     restart: unless-stopped
 
 volumes:
-  backend_drupal_files:
-  backend_drupal_db:
   backend_minio:
   

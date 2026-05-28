@@ -151,6 +151,11 @@ anonymous-read, mirroring the production
 bucket-policy posture documented in
 [base/README.md → Shared S3 storage](../base/README.md#shared-s3-storage-mandatory-by-default).
 
+The reference compose stack persists only the MinIO data volume. Drupal's
+local filesystem and SQLite path are intentionally ephemeral, so restart/
+recreate flows exercise Litestream restore behavior instead of relying on
+host-mounted Drupal volumes.
+
 [`.env.example`](../.env.example) seeds the `DRX_S3_*` variables to
 point at the in-stack MinIO; the base image bridges them into
 Litestream's native env vars on its own, so a single credential pair
@@ -242,8 +247,9 @@ Two equivalent paths, both using values from the exported JSON:
 
 Two `make` targets exercise the round-trip end-to-end against MinIO:
 
-- `make dr-drill` — writes a marker, removes the local SQLite volume,
-  and asserts the marker survives a restore from the replica.
+- `make dr-drill` — writes a DB marker and a public file marker,
+  removes and recreates the backend container (ephemeral local layer),
+  and asserts both markers survive restore from replica/S3.
 - See [base image runtime contract](../base/README.md#litestream-backup--restore-sqlite-only)
   for the full list of `DRX_LITESTREAM_*` env vars driving these flows.
 

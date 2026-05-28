@@ -13,7 +13,7 @@
 #                     the seeded JSON:API endpoint returns the expected notes
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
-# `make dr-drill` — local disaster-recovery drill (backup + restore from replica)
+# `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
 # `make pit-drill` — local point-in-time drill (TXID-pinned restore from replica)
 # `make clean`  — remove build artifacts and the local image tags
 
@@ -186,9 +186,10 @@ stack-test: base
 	echo "stack-test ok: backend healthy, S3 probe ok, s3fs enabled, $$count notes via JSON:API"
 
 # Local disaster-recovery drill for the reference app stack:
-# 1) boot app + minio, 2) write a DB marker,
+# 1) boot app + minio, 2) write a DB marker + public file marker,
 # 3) stop app gracefully to flush final litestream sync,
-# 4) delete local SQLite volume, 5) boot app and verify marker restored.
+# 4) remove backend container (drops local writable layer),
+# 5) boot app and verify both markers restored.
 dr-drill: up-build
 	@echo "Starting DR drill (single-machine litestream restore test)"
 	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
@@ -201,16 +202,23 @@ dr-drill: up-build
 		sleep 1; \
 	done; \
 	marker="drill-$$(date -u +%Y%m%dT%H%M%SZ)"; \
-	echo "Writing marker $$marker"; \
+	file_name="dr-drill-$$marker.txt"; \
+	file_body="dr-drill-file-$$marker"; \
+	echo "Writing DB marker $$marker and file marker $$file_name"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web sql:query \
 		"DELETE FROM key_value WHERE collection='drx_drill' AND name='marker'; INSERT INTO key_value (collection, name, value) VALUES ('drx_drill','marker','$$marker');" >/dev/null; \
+	DRX_DRILL_FILE_NAME="$$file_name" DRX_DRILL_FILE_BODY="$$file_body" APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web php:eval "\Drupal::service('file.repository')->writeData(getenv('DRX_DRILL_FILE_BODY'), 'public://' . getenv('DRX_DRILL_FILE_NAME'), \Drupal\Core\File\FileExists::Replace); print 'ok';" >/dev/null; \
+	pre_file="$$(DRX_DRILL_FILE_NAME="$$file_name" APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web php:eval "print file_get_contents('public://' . getenv('DRX_DRILL_FILE_NAME'));" 2>/dev/null)"; \
+	if [ "$$pre_file" != "$$file_body" ]; then \
+		echo "DR drill FAILED before restart: expected file body '$$file_body' got '$$pre_file'"; \
+		exit 1; \
+	fi; \
 	echo "Waiting $(DR_DRILL_SYNC_WAIT)s for litestream sync"; \
 	sleep $(DR_DRILL_SYNC_WAIT); \
 	echo "Stopping backend gracefully"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) stop -t 15 drx-apiserver >/dev/null; \
-	echo "Simulating local DB loss"; \
+	echo "Simulating local DB loss (ephemeral container layer)"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) rm -f -s -v drx-apiserver >/dev/null 2>&1 || true; \
-	$(CONTAINER_ENGINE) volume rm $(COMPOSE_PROJECT)_backend_drupal_db >/dev/null; \
 	echo "Recreating backend and restoring from replica"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d drx-apiserver >/dev/null; \
 	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
@@ -225,7 +233,12 @@ dr-drill: up-build
 		echo "DR drill FAILED: expected '$$marker' got '$$restored'"; \
 		exit 1; \
 	fi; \
-	echo "DR drill ok: restored marker $$restored"
+	restored_file="$$(DRX_DRILL_FILE_NAME="$$file_name" APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web php:eval "print file_get_contents('public://' . getenv('DRX_DRILL_FILE_NAME'));" 2>/dev/null)"; \
+	if [ "$$restored_file" != "$$file_body" ]; then \
+		echo "DR drill FAILED: expected restored file body '$$file_body' got '$$restored_file'"; \
+		exit 1; \
+	fi; \
+	echo "DR drill ok: restored DB marker $$restored and file marker $$file_name"
 
 # Local point-in-time restore drill:
 # 1) boot app + minio, 2) write marker A and capture replica TXID,
@@ -261,7 +274,7 @@ pit-drill: up-build
 	$(CONTAINER_ENGINE) run -d --name drx-pit --network $$net \
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_LITESTREAM_ENABLED=1 \
-		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-backups/server \
+		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
 		-e DRX_LITESTREAM_ENDPOINT=http://minio:9000 \
 		-e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
 		-e DRX_LITESTREAM_RESTORE_TXID=$$txid_a \

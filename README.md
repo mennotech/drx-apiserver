@@ -80,7 +80,7 @@ Local orchestration is via [Makefile](Makefile):
 | `make up-base` | Run only the base image (no reference overlay).      |
 | `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
-| `make dr-drill` | Run a local disaster-recovery drill (write marker, remove DB volume, restore from litestream replica). |
+| `make dr-drill` | Run a local disaster-recovery drill (write DB+file markers, recreate backend, restore from litestream/S3). |
 | `make pit-drill` | Run a local point-in-time drill (TXID-pinned restore against the MinIO replica). |
 | `make clean` | Remove build artifacts and local image tags.            |
 

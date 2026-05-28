@@ -30,6 +30,10 @@ versioned — entries are grouped by the date of the corresponding
 - Updated [server/docker-compose.yml](server/docker-compose.yml)
   `minio-init` to enable bucket versioning for the local dev bucket on
   startup.
+- Removed local Drupal file/DB named volumes from
+  [server/docker-compose.yml](server/docker-compose.yml). The reference
+  stack now persists only MinIO data; Drupal local storage is ephemeral
+  and restored via Litestream/S3 on container recreate.
 - Updated [base/README.md](base/README.md) and
   [server/README.md](server/README.md) to reflect the production-required
   bucket and local fallback naming.
