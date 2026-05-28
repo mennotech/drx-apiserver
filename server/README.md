@@ -135,16 +135,45 @@ make smoke
 Note: `make smoke` boots the **base** image, not this overlay, so it
 will not exercise the seeded notes. Use `make up` for that.
 
+`make stack-test` boots the full overlay against MinIO and asserts the
+seeded `note` records are reachable over JSON:API. It is the
+recommended end-to-end check before pushing changes that touch
+[server/](.) or the bootstrap pipeline.
+
+## Shared S3 storage (MinIO sidecar)
+
+The overlay treats S3 as the source of truth for both user content and
+the Litestream SQLite replica. The local
+[`docker-compose.yml`](docker-compose.yml) boots a MinIO sidecar plus a
+one-shot bucket initialiser (`minio-init`) that creates the bucket and
+enables bucket versioning, then flips the public prefix to
+anonymous-read, mirroring the production
+bucket-policy posture documented in
+[base/README.md → Shared S3 storage](../base/README.md#shared-s3-storage-mandatory-by-default).
+
+[`.env.example`](../.env.example) seeds the `DRX_S3_*` variables to
+point at the in-stack MinIO; the base image bridges them into
+Litestream's native env vars on its own, so a single credential pair
+covers backup/restore and Drupal's file backend.
+
+| Prefix used by the overlay     | Purpose                                                |
+| ------------------------------ | ------------------------------------------------------ |
+| `drx-data-local/litestream/`   | Litestream SQLite replica.                             |
+| `drx-data-local/private/`      | Drupal **private://** uploads (Drupal-gated).          |
+| `drx-data-local/public/`       | Drupal **public://** uploads (anonymous read on this prefix only). |
+
+For CI smoke tests that should skip S3 entirely, set
+`DRX_S3_REQUIRED=0` (the Makefile already does this for `make smoke`
+and `make up-base`).
+
 ## Litestream replication: admin UI and dev restore
 
 The reference overlay enables the `drx_litestream` custom module (see
 [`modules/custom/drx_litestream/`](modules/custom/drx_litestream/)),
 which surfaces the base image's litestream integration to operators
-without requiring shell access to the container. The local
-[`docker-compose.yml`](docker-compose.yml) also boots a MinIO sidecar
-plus a one-shot bucket initialiser, and [`.env.example`](../.env.example)
-sets `DRX_LITESTREAM_*` defaults that point at it, so the dashboard
-shows live data with no extra configuration.
+without requiring shell access to the container. Local credentials and
+endpoint come from the shared MinIO sidecar documented above, so the
+dashboard shows live data with no extra configuration.
 
 ### Health dashboard
 

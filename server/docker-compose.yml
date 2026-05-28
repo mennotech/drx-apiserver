@@ -25,9 +25,11 @@ services:
     depends_on:
       - minio
     entrypoint: >-
-      sh -c "until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} >/dev/null 2>&1; do sleep 1; done;
-             mc mb -p local/${DRX_LITESTREAM_BUCKET:-drx-backups} >/dev/null 2>&1 || true;
-             echo 'minio-init: bucket ${DRX_LITESTREAM_BUCKET:-drx-backups} ready'"
+            sh -c "until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} >/dev/null 2>&1; do sleep 1; done;
+              mc mb -p local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
+             mc version enable local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
+              mc anonymous set download local/${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_PUBLIC:-public} >/dev/null 2>&1 || true;
+             echo 'minio-init: bucket ${DRX_S3_BUCKET:-drx-data-local} ready (versioning enabled; anonymous read on ${DRX_S3_PREFIX_PUBLIC:-public}/)'"
     restart: 'no'
 
   drx-apiserver:
@@ -53,19 +55,18 @@ services:
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8088}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-      # API policy: this reference app opts into JSON:API write mode via
-      # its post-config-import.d hook; the base image stays read-only.
-      #
-      # Litestream — enabled by default in this local dev overlay so the
-      # drx_litestream admin module shows live data against the sidecar
-      # MinIO. In production, leave these unset (DRX_LITESTREAM_ENABLED=0)
-      # or point at your real S3-compatible backend.
-      DRX_LITESTREAM_ENABLED: ${DRX_LITESTREAM_ENABLED:-1}
-      DRX_LITESTREAM_REPLICA_URL: ${DRX_LITESTREAM_REPLICA_URL:-s3://drx-backups/server}
-      DRX_LITESTREAM_ENDPOINT: ${DRX_LITESTREAM_ENDPOINT:-http://minio:9000}
-      DRX_LITESTREAM_REGION: ${DRX_LITESTREAM_REGION:-us-east-1}
-      LITESTREAM_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      LITESTREAM_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # Shared S3 connection (Litestream replica + Drupal file storage).
+      # One bucket, three prefixes: litestream/, private/, public/. The
+      # base image takes this as the source of truth and bridges into
+      # Litestream's native env vars on its own.
+      DRX_S3_BUCKET: ${DRX_S3_BUCKET:-drx-data-local}
+      DRX_S3_REGION: ${DRX_S3_REGION:-us-east-1}
+      DRX_S3_ENDPOINT: ${DRX_S3_ENDPOINT:-http://minio:9000}
+      DRX_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      DRX_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      DRX_S3_PREFIX_LITESTREAM: ${DRX_S3_PREFIX_LITESTREAM:-litestream}
+      DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
+      DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
     volumes:
       - backend_drupal_files:/var/www/html/web/sites/default/files
       - backend_drupal_db:/var/drupal-db

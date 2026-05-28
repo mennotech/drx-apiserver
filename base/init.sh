@@ -43,9 +43,12 @@ drx::log "drx-apiserver ${DRX_BASE_VERSION:-unknown} starting bootstrap"
 . "${DRX_LIB_DIR}/api.sh"
 # shellcheck source=lib/litestream.sh
 . "${DRX_LIB_DIR}/litestream.sh"
+# shellcheck source=lib/s3.sh
+. "${DRX_LIB_DIR}/s3.sh"
 
 drx::run_hooks pre-bootstrap.d
 
+drx::s3::ensure
 drx::storage::prepare
 drx::litestream::write_config
 drx::litestream::restore
@@ -54,6 +57,7 @@ drx::services::write
 drx::install::ensure
 drx::timezone::ensure
 drx::modules::enable_base
+drx::s3::enable_module
 drx::run_hooks post-install.d
 drx::config_import::run
 drx::timezone::reconcile

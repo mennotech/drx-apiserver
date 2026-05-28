@@ -11,6 +11,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Shared S3 storage contract. A single bucket and credential pair are
+  now shared between Litestream (database replica) and Drupal's file
+  backend (`drupal/s3fs`), with three prefixes inside the bucket:
+  `${DRX_S3_PREFIX_LITESTREAM}/`, `${DRX_S3_PREFIX_PRIVATE}/`, and
+  `${DRX_S3_PREFIX_PUBLIC}/`. The public prefix is the **only** path
+  that is anonymously readable, and only when the bucket policy
+  explicitly grants `s3:GetObject` on `<bucket>/<public-prefix>/*`;
+  everything else is private and Drupal-gated.
+- `drupal/s3fs` `^3.0` (resolved to 3.10.0) added to base composer
+  requirements, with `aws/aws-sdk-php` pulled in transitively. The
+  module is enabled automatically during base-module bootstrap when S3
+  is required, and `settings.php` is rendered with
+  `use_s3_for_public=TRUE` and `use_s3_for_private=TRUE` so the
+  standard `public://` and `private://` stream wrappers transparently
+  resolve under the shared bucket.
+- Mandatory S3 bootstrap. New `lib/s3.sh` validates the `DRX_S3_*` env
+  contract, fills in any missing `DRX_LITESTREAM_*` credentials,
+  endpoint, region, and path-style defaults from the shared vars, and
+  runs a SigV4-signed probe (`HEAD <bucket>` plus
+  `GET <bucket>?versioning=`)
+  (`lib/s3_probe.php`, dependency-free PHP) before storage and Litestream
+  initialisation. Probe failures abort boot. Buckets must have
+  versioning enabled when `DRX_S3_REQUIRED=1`.
 - `DRX_TIMEZONE` support for the Drupal site timezone. On a fresh install, if the env var is unset, the bootstrap now attempts a one-time public-IP lookup and falls back to `UTC`; the resolved value is persisted to Drupal site config. On later boots, the site timezone is reconciled only when `DRX_TIMEZONE` differs from the active Drupal config.
 - Scaffolding for SQLite backup/restore via Litestream. The pinned
   `litestream` binary (v0.5.11) is now bundled in the runtime image at
@@ -30,6 +53,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   (writer lifecycle wrapping) lands in a subsequent release.
 
 ### Runtime contract (new env vars)
+- `DRX_S3_REQUIRED` (default `1`; `0` is a CI-only escape hatch that
+  skips env validation, the connectivity probe, and the `s3fs` module
+  enable).
+- `DRX_S3_BUCKET`, `DRX_S3_REGION` (default `us-east-1`),
+  `DRX_S3_ENDPOINT`, `DRX_S3_FORCE_PATH_STYLE` (auto),
+  `DRX_S3_ACCESS_KEY_ID`, `DRX_S3_SECRET_ACCESS_KEY` — required when
+  `DRX_S3_REQUIRED=1`; shared by Litestream and `drupal/s3fs`.
+- `DRX_S3_PREFIX_LITESTREAM` (default `litestream`),
+  `DRX_S3_PREFIX_PRIVATE` (default `private`),
+  `DRX_S3_PREFIX_PUBLIC` (default `public`) — three-prefix layout
+  inside the shared bucket. The public prefix is the only path that
+  may be exposed anonymously, and only via an explicit bucket policy.
 - `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).
 - `DRX_LITESTREAM_ENABLED` (default `0`).
 - `DRX_LITESTREAM_REPLICA_URL` (required when enabled, e.g.

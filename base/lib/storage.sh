@@ -7,6 +7,11 @@ drx::storage::prepare() {
 
     install -d -o www-data -g www-data -m 0770 "${DRUPAL_STATE_DIR}"
 
+    # Private files placeholder directory. Drupal requires file_private_path to
+    # be a real, writable directory before it will register the private://
+    # stream wrapper — even when s3fs routes actual writes to S3.
+    install -d -o www-data -g www-data -m 0770 "${DRUPAL_PRIVATE_FILES_PATH:-/var/drupal-private}"
+
     # Files directory: if a parent symlink is provided via DRUPAL_FILES_TARGET
     # (typical for orchestrators that mount a persistent volume elsewhere),
     # symlink files/ to that target. Otherwise treat files/ as a real dir.

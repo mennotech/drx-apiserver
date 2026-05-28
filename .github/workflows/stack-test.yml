@@ -1,0 +1,52 @@
+# Full-stack end-to-end test for the reference overlay.
+#
+# Boots the full docker-compose stack (drx-apiserver + MinIO + bucket
+# init) with the production S3 posture (DRX_S3_REQUIRED=1, no escape
+# hatch), waits for the backend healthcheck, and asserts the seeded
+# JSON:API endpoint returns the expected note records. This is the
+# end-to-end counterpart to the base-image smoke test, which boots only
+# the base image with S3 disabled.
+name: stack-test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'base/**'
+      - 'server/**'
+      - 'Makefile'
+      - '.github/workflows/stack-test.yml'
+  pull_request:
+    paths:
+      - 'base/**'
+      - 'server/**'
+      - 'Makefile'
+      - '.github/workflows/stack-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  stack-test:
+    name: full-stack (compose + minio)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show docker / compose versions
+        run: |
+          docker version
+          docker compose version
+
+      - name: Run full-stack test
+        env:
+          DRUPAL_ADMIN_PASS: ci-stack-test-password
+        run: make stack-test
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: |
+          docker compose -f server/docker-compose.yml --project-directory . -p drx-apiserver \
+            logs --no-color drx-apiserver minio minio-init || true

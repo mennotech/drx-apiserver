@@ -9,6 +9,8 @@
 # `make up-base` — run only the base image locally
 # `make down-base` — stop the base-only local container
 # `make smoke`  — boot the base image and hit its healthcheck
+# `make stack-test` — boot the full compose stack (app + MinIO) and assert
+#                     the seeded JSON:API endpoint returns the expected notes
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (backup + restore from replica)
@@ -45,8 +47,10 @@ TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
 DR_DRILL_HEALTH_TIMEOUT ?= 90
 DR_DRILL_SYNC_WAIT      ?= 3
+STACK_TEST_TIMEOUT      ?= 180
+STACK_TEST_ADMIN_PASS   ?= stack-test-password
 
-.PHONY: base app build up up-build down up-base down-base smoke scan verify dr-drill pit-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke stack-test scan verify dr-drill pit-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -73,6 +77,7 @@ up-base: base
 	@$(CONTAINER_ENGINE) rm -f $(BASE_UP_CONTAINER) >/dev/null 2>&1 || true
 	$(CONTAINER_ENGINE) run -d --name $(BASE_UP_CONTAINER) \
 		-e DRUPAL_ADMIN_PASS=$(BASE_UP_ADMIN_PASS) \
+		-e DRX_S3_REQUIRED=0 \
 		-p $(BASE_UP_PORT):80 $(BASE_IMAGE)
 
 down-base:
@@ -86,6 +91,7 @@ smoke: base
 	@$(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null 2>&1 || true
 	$(CONTAINER_ENGINE) run --rm -d --name drx-smoke \
 		-e DRUPAL_ADMIN_PASS=smoke-password \
+		-e DRX_S3_REQUIRED=0 \
 		-p $(SMOKE_PORT):80 $(BASE_IMAGE)
 	@echo "Waiting for healthcheck..."
 	@for i in $$(seq 1 60); do \
@@ -134,6 +140,50 @@ scan: base
 # Minimum local check before `git push`. Mirrors the CI gates.
 verify: smoke scan
 	@echo "verify ok"
+
+# Full-stack end-to-end test against MinIO.
+#
+# Boots the full compose stack (drx-apiserver + minio + minio-init),
+# waits for the backend healthcheck to report `healthy`, then asserts:
+#   * GET /jsonapi/node/note returns exactly 3 seeded notes
+#   * The bootstrap log shows a successful S3 probe and s3fs module enable
+# Tears the stack down on success or failure. This is the recommended
+# pre-push check for any change touching server/ or the bootstrap pipeline.
+stack-test: base
+	@set -e; \
+	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(STACK_TEST_ADMIN_PASS) \
+		$(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; \
+	echo "Building images..."; \
+	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) \
+		$(COMPOSE) $(COMPOSE_ARGS) build >/dev/null; \
+	echo "Starting full stack..."; \
+	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(STACK_TEST_ADMIN_PASS) \
+		$(COMPOSE) $(COMPOSE_ARGS) up --no-build -d >/dev/null; \
+	trap 'echo "--- drx-apiserver logs (tail) ---"; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs --tail=120 drx-apiserver || true; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true' EXIT; \
+	echo "Waiting up to $(STACK_TEST_TIMEOUT)s for backend health..."; \
+	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	[ -n "$$CID" ] || { echo "drx-apiserver container not found"; exit 1; }; \
+	for i in $$(seq 1 $(STACK_TEST_TIMEOUT)); do \
+		if $(CONTAINER_ENGINE) exec $$CID /usr/local/bin/drx-healthcheck >/dev/null 2>&1; then \
+			echo "backend healthy after $${i}s"; break; \
+		fi; \
+		if [ $$i -eq $(STACK_TEST_TIMEOUT) ]; then echo "backend not healthy in $(STACK_TEST_TIMEOUT)s"; exit 1; fi; \
+		sleep 1; \
+	done; \
+	echo "Asserting S3 probe succeeded in bootstrap log..."; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs drx-apiserver 2>&1 | grep -qE 's3_probe: ok' \
+		|| { echo "FAIL: no successful S3 probe in logs"; exit 1; }; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs drx-apiserver 2>&1 | grep -qE 's3: enabling s3fs module' \
+		|| { echo "FAIL: s3fs module was not enabled"; exit 1; }; \
+	echo "Asserting JSON:API returns seeded notes..."; \
+	body="$$($(CONTAINER_ENGINE) exec $$CID curl -fsS http://127.0.0.1/jsonapi/node/note)"; \
+	count="$$(printf '%s' "$$body" | grep -oE '"type":"node--note"' | wc -l | tr -d ' ')"; \
+	if [ "$$count" -lt 3 ]; then \
+		echo "FAIL: expected >=3 seeded notes, got $$count"; \
+		printf '%s\n' "$$body" | head -c 400; echo; \
+		exit 1; \
+	fi; \
+	echo "stack-test ok: backend healthy, S3 probe ok, s3fs enabled, $$count notes via JSON:API"
 
 # Local disaster-recovery drill for the reference app stack:
 # 1) boot app + minio, 2) write a DB marker,

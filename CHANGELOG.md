@@ -19,6 +19,33 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Added
 
+#### S3 contract defaults (prod vs dev)
+- Clarified and documented the S3 bucket contract split:
+  production keeps `DRX_S3_BUCKET` explicit and required when
+  `DRX_S3_REQUIRED=1`, while the reference local overlay provides a
+  dev-only fallback bucket (`drx-data-local`) for quick starts.
+- Updated local defaults in [server/docker-compose.yml](server/docker-compose.yml)
+  and [.env.example](.env.example) from `drx-backups` to
+  `drx-data-local`, including the litestream replica URL.
+- Updated [server/docker-compose.yml](server/docker-compose.yml)
+  `minio-init` to enable bucket versioning for the local dev bucket on
+  startup.
+- Updated [base/README.md](base/README.md) and
+  [server/README.md](server/README.md) to reflect the production-required
+  bucket and local fallback naming.
+
+#### Full-stack test
+- Added `make stack-test` to [Makefile](Makefile): boots the full
+  reference compose stack (drx-apiserver + MinIO + bucket initialiser)
+  with the production S3 posture (no `DRX_S3_REQUIRED=0` escape hatch),
+  waits for the backend healthcheck, and asserts the bootstrap log
+  shows a successful S3 probe + `s3fs` module enable plus that
+  `GET /jsonapi/node/note` returns the three seeded notes. Tears the
+  stack down on success and failure.
+- Added [.github/workflows/stack-test.yml](.github/workflows/stack-test.yml):
+  runs `make stack-test` on every push and pull request that touches
+  `base/`, `server/`, the `Makefile`, or the workflow itself.
+
 #### Local DR drill workflow
 - Added `make dr-drill` to [Makefile](Makefile), a local disaster-recovery
   verification target for the reference stack that writes a DB marker,

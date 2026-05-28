@@ -17,6 +17,10 @@ export DRUPAL_TRUSTED_HOSTS_PHP="${DRUPAL_SITE_DIR}/trusted-hosts.settings.php"
 export DRUPAL_CONFIG_SYNC_DIR="${DRUPAL_CONFIG_SYNC_DIR:-${DRUPAL_HTML_ROOT}/config/sync}"
 export DRUPAL_STATE_DIR="${DRUPAL_STATE_DIR:-/var/drupal-db}"
 export DRUPAL_CONFIG_HASH_FILE="${DRUPAL_STATE_DIR}/.config_hash"
+# Placeholder directory that satisfies Drupal's file_private_path requirement.
+# Nothing is actually written here when s3fs takes over private://; the
+# directory must simply exist and be writable by www-data.
+export DRUPAL_PRIVATE_FILES_PATH="${DRUPAL_PRIVATE_FILES_PATH:-/var/drupal-private}"
 
 # Database contract (sqlite-first; mysql/pgsql ready for future use).
 export DRUPAL_DB_DRIVER="${DRUPAL_DB_DRIVER:-sqlite}"
@@ -32,6 +36,38 @@ export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-}"
 export DRX_TIMEZONE="${DRX_TIMEZONE:-}"
 
+# -----------------------------------------------------------------------------
+# Shared S3 connection. Used by both Litestream (database replication) and
+# the Drupal file storage backend (user file uploads). One bucket, three
+# prefixes, one set of credentials.
+#
+# Layout inside the bucket:
+#   ${DRX_S3_PREFIX_LITESTREAM}/   Litestream replica  (no public access)
+#   ${DRX_S3_PREFIX_PRIVATE}/      Drupal private files (Drupal-gated)
+#   ${DRX_S3_PREFIX_PUBLIC}/       Drupal public files  (anonymous read via
+#                                  bucket policy on this prefix only)
+#
+# Security posture: private by default. Public access exists only because
+# the bucket policy explicitly grants s3:GetObject on the public prefix;
+# any other path is deny-by-default.
+#
+# DRX_S3_REQUIRED is the master switch:
+#   1 (default) — production posture. Bootstrap validates env + connectivity
+#                 and refuses to start when S3 is misconfigured or unreachable.
+#   0           — CI/build escape hatch. Skips validation and connectivity
+#                 probe so the image can boot without a live S3 backend.
+# -----------------------------------------------------------------------------
+export DRX_S3_REQUIRED="${DRX_S3_REQUIRED:-1}"
+export DRX_S3_BUCKET="${DRX_S3_BUCKET:-}"
+export DRX_S3_REGION="${DRX_S3_REGION:-us-east-1}"
+export DRX_S3_ENDPOINT="${DRX_S3_ENDPOINT:-}"
+export DRX_S3_FORCE_PATH_STYLE="${DRX_S3_FORCE_PATH_STYLE:-}"
+export DRX_S3_ACCESS_KEY_ID="${DRX_S3_ACCESS_KEY_ID:-}"
+export DRX_S3_SECRET_ACCESS_KEY="${DRX_S3_SECRET_ACCESS_KEY:-}"
+export DRX_S3_PREFIX_LITESTREAM="${DRX_S3_PREFIX_LITESTREAM:-litestream}"
+export DRX_S3_PREFIX_PRIVATE="${DRX_S3_PREFIX_PRIVATE:-private}"
+export DRX_S3_PREFIX_PUBLIC="${DRX_S3_PREFIX_PUBLIC:-public}"
+
 # Module/API contract. Secure-by-default: read-only JSON:API.
 export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"
 export DRUPAL_EXTRA_MODULES="${DRUPAL_EXTRA_MODULES:-}"
@@ -41,16 +77,23 @@ export DRUPAL_JSONAPI_READ_ONLY="${DRUPAL_JSONAPI_READ_ONLY:-1}"
 # and the BACKEND_URL host are always added.
 export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 
-# Litestream (SQLite backup/restore). Off by default. When enabled, the
-# bootstrap renders /etc/litestream.yml from these vars (unless
-# DRX_LITESTREAM_CONFIG_FILE points at an operator-provided config), runs
-# a restore-before-install on first boot, and (Phase 3+) wraps Apache
-# with `litestream replicate --exec` for ongoing replication.
+# Litestream (SQLite backup/restore). Off by default unless the shared S3
+# contract is active (DRX_S3_REQUIRED=1 and DRX_S3_BUCKET set), in which
+# case lib/s3.sh::bridge_litestream enables it automatically. Set
+# DRX_LITESTREAM_ENABLED=0 explicitly to disable replication even when S3
+# is configured. When enabled, the bootstrap renders /etc/litestream.yml
+# from these vars (unless DRX_LITESTREAM_CONFIG_FILE points at an
+# operator-provided config), runs a restore-before-install on first boot,
+# and wraps Apache with `litestream replicate --exec` for ongoing replication.
 #
 # Required when enabled: DRX_LITESTREAM_REPLICA_URL plus credentials
 # in litestream-native env vars (LITESTREAM_ACCESS_KEY_ID,
 # LITESTREAM_SECRET_ACCESS_KEY, or provider equivalents).
-export DRX_LITESTREAM_ENABLED="${DRX_LITESTREAM_ENABLED:-0}"
+#
+# NOTE: intentionally NOT defaulted to "0" here so that bridge_litestream
+# can use := to set it to "1" when the shared S3 connection is present.
+# The inline default in drx::litestream::enabled (:-0) handles the unset case.
+export DRX_LITESTREAM_ENABLED
 export DRX_LITESTREAM_REPLICA_URL="${DRX_LITESTREAM_REPLICA_URL:-}"
 export DRX_LITESTREAM_ENDPOINT="${DRX_LITESTREAM_ENDPOINT:-}"
 export DRX_LITESTREAM_REGION="${DRX_LITESTREAM_REGION:-us-east-1}"
