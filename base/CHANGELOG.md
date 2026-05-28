@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `DRX_TIMEZONE` support for the Drupal site timezone. On a fresh install, if the env var is unset, the bootstrap now attempts a one-time public-IP lookup and falls back to `UTC`; the resolved value is persisted to Drupal site config. On later boots, the site timezone is reconciled only when `DRX_TIMEZONE` differs from the active Drupal config.
 - Scaffolding for SQLite backup/restore via Litestream. The pinned
   `litestream` binary (v0.5.11) is now bundled in the runtime image at
   `/usr/local/bin/litestream`, and a new bootstrap library
@@ -29,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   (writer lifecycle wrapping) lands in a subsequent release.
 
 ### Runtime contract (new env vars)
+- `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).
 - `DRX_LITESTREAM_ENABLED` (default `0`).
 - `DRX_LITESTREAM_REPLICA_URL` (required when enabled, e.g.
   `s3://bucket/prefix`).

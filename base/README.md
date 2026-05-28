@@ -139,6 +139,12 @@ RUN echo 'memory_limit = 512M' > /usr/local/etc/php/conf.d/99-overrides.ini
 | `DRX_HEALTHCHECK_PORT` | `80`  | Healthcheck target port.                                    |
 | `DRX_HEALTHCHECK_PATH` | `/user/login_status?_format=json` | Healthcheck target path.        |
 
+### Site timezone
+
+| Variable | Default | Notes |
+| -------- | ------- | ----- |
+| `DRX_TIMEZONE` | _(unset)_ | Sets the Drupal site timezone. If unset during a fresh install, the bootstrap tries a public-IP lookup once and falls back to `UTC`. On later boots, the site config is only updated when this env var differs from the current Drupal config. |
+
 ### Litestream backup / restore (SQLite only)
 
 The image bundles the pinned `litestream` binary at

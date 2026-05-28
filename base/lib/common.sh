@@ -30,6 +30,7 @@ export DRUPAL_INSTALL_PROFILE="${DRUPAL_INSTALL_PROFILE:-minimal}"
 export BACKEND_URL="${BACKEND_URL:-http://localhost}"
 export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-}"
+export DRX_TIMEZONE="${DRX_TIMEZONE:-}"
 
 # Module/API contract. Secure-by-default: read-only JSON:API.
 export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"

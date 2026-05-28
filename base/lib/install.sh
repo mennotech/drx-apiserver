@@ -34,6 +34,8 @@ drx::install::_db_url() {
 }
 
 drx::install::ensure() {
+    DRX_INSTALL_WAS_FRESH=0
+
     if drx::install::_db_ready; then
         drx::log "Drupal already installed"
         return 0
@@ -58,4 +60,6 @@ drx::install::ensure() {
         --account-pass="${DRUPAL_ADMIN_PASS}" \
         --site-name="${DRUPAL_SITE_NAME}" \
         --yes
+
+    DRX_INSTALL_WAS_FRESH=1
 }
