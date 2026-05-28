@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\drx_litestream\Service;
 
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Reads litestream state by shelling out to the local CLI.
@@ -128,6 +129,66 @@ class LitestreamStatus {
       }
     }
     return $max;
+  }
+
+  /**
+   * Read snapshot/retention settings from the live config file.
+   *
+   * Operators can opt out of Litestream-driven remote deletion by setting
+   * `retention: { enabled: false }` and relying on bucket lifecycle
+   * policies instead, which has very different cost / blast-radius
+   * implications. This method surfaces which mode is active.
+   *
+   * @return array{
+   *   mode: string,
+   *   description: string,
+   *   snapshot_interval?: string,
+   *   snapshot_retention?: string,
+   * }
+   */
+  public function getRetentionInfo(): array {
+    $path = $this->getConfigPath();
+    if (!is_readable($path)) {
+      return ['mode' => 'unknown', 'description' => 'config file not readable'];
+    }
+    try {
+      $data = Yaml::parseFile($path);
+    }
+    catch (\Throwable $e) {
+      return ['mode' => 'unknown', 'description' => 'config parse error: ' . $e->getMessage()];
+    }
+    if (!is_array($data)) {
+      return ['mode' => 'unknown', 'description' => 'unexpected config shape'];
+    }
+
+    $info = [];
+    $retentionDisabled = FALSE;
+    if (isset($data['retention']) && is_array($data['retention'])
+      && array_key_exists('enabled', $data['retention'])) {
+      $retentionDisabled = $data['retention']['enabled'] === FALSE;
+    }
+    if (isset($data['snapshot']) && is_array($data['snapshot'])) {
+      if (!empty($data['snapshot']['interval'])) {
+        $info['snapshot_interval'] = (string) $data['snapshot']['interval'];
+      }
+      if (!empty($data['snapshot']['retention'])) {
+        $info['snapshot_retention'] = (string) $data['snapshot']['retention'];
+      }
+    }
+
+    if ($retentionDisabled) {
+      $info['mode'] = 'bucket-lifecycle';
+      $info['description'] = 'Litestream remote deletes are disabled; old LTX files and snapshots are pruned by the bucket lifecycle policy.';
+    }
+    elseif (!empty($info['snapshot_interval']) || !empty($info['snapshot_retention'])) {
+      $info['mode'] = 'litestream-managed (custom)';
+      $info['description'] = 'Old LTX files and snapshots are pruned by Litestream using the configured snapshot/retention settings.';
+    }
+    else {
+      $info['mode'] = 'litestream-managed (defaults)';
+      $info['description'] = 'Old LTX files and snapshots are pruned by Litestream using upstream defaults. Set snapshot.interval / snapshot.retention in the litestream config to tune.';
+    }
+    return $info;
   }
 
 }

@@ -6,6 +6,15 @@ drx_litestream.health:
   requirements:
     _permission: 'administer drx litestream'
 
+drx_litestream.refresh_remote_size:
+  path: '/admin/config/drx/litestream/refresh-remote-size'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\HealthController::refreshRemoteSize'
+    _title: 'Refresh remote backup size'
+  requirements:
+    _permission: 'administer drx litestream'
+    _csrf_token: 'TRUE'
+
 drx_litestream.markers:
   path: '/admin/config/drx/litestream/markers'
   defaults:

@@ -5,3 +5,11 @@ services:
   drx_litestream.markers:
     class: Drupal\drx_litestream\Service\MarkerManager
     arguments: ['@database', '@current_user', '@uuid', '@datetime.time']
+  drx_litestream.remote_replica:
+    class: Drupal\drx_litestream\Service\RemoteReplica
+    arguments:
+      - '@drx_litestream.status'
+      - '@cache.default'
+      - '@http_client'
+      - '@logger.factory'
+      - '@datetime.time'
