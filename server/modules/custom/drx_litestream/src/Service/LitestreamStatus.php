@@ -113,9 +113,10 @@ class LitestreamStatus {
     }
     $bin = escapeshellarg($this->getBinary());
     $cfg = escapeshellarg($this->getConfigPath());
+    $db = escapeshellarg($this->getDatabasePath());
     $out = [];
     $rc = 0;
-    @exec("$bin ltx -config $cfg -level all 2>&1", $out, $rc);
+    @exec("$bin ltx -config $cfg -level all $db 2>&1", $out, $rc);
     if ($rc !== 0) {
       return NULL;
     }
