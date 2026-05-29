@@ -117,7 +117,7 @@ export DRX_LITESTREAM_RESTORE_TIMESTAMP="${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}"
 # reading the LTX TXID for application-consistent snapshots. Set to
 # an empty string to disable the socket entirely (snapshots will fall
 # back to polling sync-interval, but with no force-flush capability).
-export DRX_LITESTREAM_CONTROL_SOCKET="${DRX_LITESTREAM_CONTROL_SOCKET:-/var/run/litestream.sock}"
+export DRX_LITESTREAM_CONTROL_SOCKET="${DRX_LITESTREAM_CONTROL_SOCKET-/var/run/litestream.sock}"
 export DRX_LITESTREAM_CONTROL_SOCKET_PERMS="${DRX_LITESTREAM_CONTROL_SOCKET_PERMS:-0666}"
 
 # Logging ---------------------------------------------------------------------
