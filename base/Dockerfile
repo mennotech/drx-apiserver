@@ -18,6 +18,8 @@ ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f
 ARG LITESTREAM_VERSION=0.5.11
 ARG LITESTREAM_GRPC_VERSION=1.79.3
 ARG LITESTREAM_GOOGLE_API_VERSION=0.253.0
+ARG LITESTREAM_GO_JOSE_VERSION=4.1.4
+ARG LITESTREAM_OTEL_VERSION=1.43.0
 
 # -----------------------------------------------------------------------------
 # Stage 1a: litestream-fetch — pull a pinned, architecture-correct litestream
@@ -30,6 +32,8 @@ FROM golang:1.26-bookworm AS litestream-fetch
 ARG LITESTREAM_VERSION
 ARG LITESTREAM_GRPC_VERSION
 ARG LITESTREAM_GOOGLE_API_VERSION
+ARG LITESTREAM_GO_JOSE_VERSION
+ARG LITESTREAM_OTEL_VERSION
 ARG TARGETARCH
 
 RUN set -eux; \
@@ -42,13 +46,16 @@ RUN set -eux; \
     esac; \
     git clone --depth 1 --branch "v${LITESTREAM_VERSION}" https://github.com/benbjohnson/litestream.git /tmp/litestream; \
     cd /tmp/litestream; \
-        go mod edit -require="google.golang.org/grpc@v${LITESTREAM_GRPC_VERSION}"; \
-        go mod edit -require="google.golang.org/api@v${LITESTREAM_GOOGLE_API_VERSION}"; \
+    go mod edit -require="google.golang.org/grpc@v${LITESTREAM_GRPC_VERSION}"; \
+    go mod edit -require="google.golang.org/api@v${LITESTREAM_GOOGLE_API_VERSION}"; \
+    go mod edit -require="github.com/go-jose/go-jose/v4@v${LITESTREAM_GO_JOSE_VERSION}"; \
+    go mod edit -require="go.opentelemetry.io/otel@v${LITESTREAM_OTEL_VERSION}"; \
+    go mod edit -require="go.opentelemetry.io/otel/sdk@v${LITESTREAM_OTEL_VERSION}"; \
     CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH:-amd64}" \
-            GOWORK=off GOFLAGS="-mod=mod -buildvcs=false" \
-            go build -trimpath -ldflags "-s -w -X main.version=v${LITESTREAM_VERSION}" -o /usr/local/bin/litestream ./cmd/litestream; \
+      GOWORK=off GOFLAGS="-mod=mod -buildvcs=false" \
+      go build -trimpath -ldflags "-s -w -X main.version=v${LITESTREAM_VERSION}" -o /usr/local/bin/litestream ./cmd/litestream; \
     chmod 0755 /usr/local/bin/litestream; \
-        rm -rf /root/.cache/go-build /go/pkg/mod; \
+    rm -rf /root/.cache/go-build /go/pkg/mod; \
     /usr/local/bin/litestream version
 
 # -----------------------------------------------------------------------------
