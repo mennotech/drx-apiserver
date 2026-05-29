@@ -117,9 +117,9 @@ class SnapshotOrchestrator {
     $log = $this->loggerFactory->get('drx_litestream');
 
     $lockTtl = (float) $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_TTL', 900);
-    $drainSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_DRAIN_SECS', 3);
+    $drainSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_DRAIN_SECS', 3, TRUE);
     $replicaTimeout = $this->envInt('DRX_LITESTREAM_SNAPSHOT_TIMEOUT', 30);
-    $lockWaitSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_WAIT', 10);
+    $lockWaitSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_WAIT', 10, TRUE);
 
     // 1) Acquire cron lock. If cron is currently running we briefly
     // wait, then try once more. If that still fails the operator can
@@ -425,13 +425,19 @@ class SnapshotOrchestrator {
     return NULL;
   }
 
-  protected function envInt(string $key, int $default): int {
+  protected function envInt(string $key, int $default, bool $allowZero = FALSE): int {
     $v = getenv($key);
     if ($v === FALSE || $v === '') {
       return $default;
     }
     $n = (int) $v;
-    return $n > 0 ? $n : $default;
+    if ($n > 0) {
+      return $n;
+    }
+    if ($allowZero && $n === 0) {
+      return 0;
+    }
+    return $default;
   }
 
   /**

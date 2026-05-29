@@ -42,7 +42,7 @@ jobs:
 
       - name: Run smoke-stack test
         env:
-          DRUPAL_ADMIN_PASS: ci-smoke-stack-password
+          SMOKE_STACK_ADMIN_PASS: ci-smoke-stack-password
         run: make smoke-stack
 
       - name: Dump backend logs on failure

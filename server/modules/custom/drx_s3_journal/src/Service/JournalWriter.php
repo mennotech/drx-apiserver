@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\drx_s3_journal\Service;
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\ClientException;
 
 /**
  * Writes a single immutable JSON object to the configured S3 bucket
@@ -87,23 +88,30 @@ class JournalWriter {
     $authorization = "AWS4-HMAC-SHA256 Credential={$keyId}/{$scope}, "
       . "SignedHeaders={$signedHeaders}, Signature={$signature}";
 
-    $this->http->request('PUT', $base . $canonicalUri, [
-      'headers' => [
-        'Host' => $host,
-        'Content-Type' => $contentType,
-        'x-amz-content-sha256' => $payloadHash,
-        'x-amz-date' => $now,
-        'Authorization' => $authorization,
-        // If-None-Match: * makes the PUT fail when the object already
-        // exists. Combined with idempotent event_id keys this turns
-        // any accidental retry into a harmless 412 instead of a
-        // silent overwrite — preserves journal immutability.
-        'If-None-Match' => '*',
-      ],
-      'body' => $body,
-      'http_errors' => TRUE,
-      'timeout' => 10,
-    ]);
+    try {
+      $this->http->request('PUT', $base . $canonicalUri, [
+        'headers' => [
+          'Host' => $host,
+          'Content-Type' => $contentType,
+          'x-amz-content-sha256' => $payloadHash,
+          'x-amz-date' => $now,
+          'Authorization' => $authorization,
+          // If-None-Match: * ensures we never overwrite an existing
+          // journal object. If a retry hits the same key and S3
+          // returns 412, treat it as an idempotent success.
+          'If-None-Match' => '*',
+        ],
+        'body' => $body,
+        'http_errors' => TRUE,
+        'timeout' => 10,
+      ]);
+    }
+    catch (ClientException $e) {
+      if ($e->getResponse()?->getStatusCode() === 412) {
+        return;
+      }
+      throw $e;
+    }
   }
 
   /**

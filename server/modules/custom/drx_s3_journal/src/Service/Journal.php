@@ -241,7 +241,7 @@ class Journal {
   /**
    * Build the S3 object key.
    *
-  * Layout: <DRX_S3_PREFIX_JOURNAL>/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json
+    * Layout: <DRX_S3_PREFIX_JOURNAL>/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json
    *
    * The hourly partition is the lexicographic anchor for "replay from
    * point in time": listing the bucket from this prefix forward yields
@@ -281,7 +281,7 @@ class Journal {
   }
 
   protected function nowMicroIso(): string {
-    // Microsecond precision UTC ISO-8601, e.g. 2026-05-28T14:35:01.123456Z.
+    // Microsecond precision UTC ISO-8601, e.g. 2026-05-29T14:35:01.123456Z.
     $now = \DateTimeImmutable::createFromFormat(
       'U.u',
       sprintf('%.6F', microtime(TRUE)),

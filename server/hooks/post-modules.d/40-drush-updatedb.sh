@@ -18,6 +18,7 @@ if /var/www/html/vendor/bin/drush --root=/var/www/html/web updatedb --no-cache-c
     echo "[drx] drush updatedb: ok"
 else
     rc=$?
-    echo "[drx] WARN: drush updatedb returned $rc"
+    echo "[drx] ERROR: drush updatedb returned $rc"
     tail -n 40 /tmp/drx-updatedb.log || true
+    exit "$rc"
 fi
