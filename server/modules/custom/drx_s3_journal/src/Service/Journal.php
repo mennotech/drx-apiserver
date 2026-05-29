@@ -154,7 +154,7 @@ class Journal {
    * the requested start within that hour.
    */
   public function replayPrefix(int $unixTimestamp): string {
-    return 'journal/v1/' . gmdate('Y/m/d/H', $unixTimestamp) . '/';
+    return $this->journalPrefix() . '/' . gmdate('Y/m/d/H', $unixTimestamp) . '/';
   }
 
   /**
@@ -241,7 +241,7 @@ class Journal {
   /**
    * Build the S3 object key.
    *
-   * Layout: journal/v1/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json
+  * Layout: <DRX_S3_PREFIX_JOURNAL>/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json
    *
    * The hourly partition is the lexicographic anchor for "replay from
    * point in time": listing the bucket from this prefix forward yields
@@ -258,7 +258,8 @@ class Journal {
     $partition = $ts->format('Y/m/d/H');
     $stamp = $ts->format('Ymd\THis.u\Z');
     return sprintf(
-      'journal/v1/%s/%s_%s_%s_%s_%d.json',
+      '%s/%s/%s_%s_%s_%s_%d.json',
+      $this->journalPrefix(),
       $partition,
       $stamp,
       $eventId,
@@ -266,6 +267,12 @@ class Journal {
       $this->sanitize($scope),
       $fid,
     );
+  }
+
+  protected function journalPrefix(): string {
+    $prefix = (string) (getenv('DRX_S3_PREFIX_JOURNAL') ?: 'journal/v1');
+    $prefix = trim($prefix, '/');
+    return $prefix !== '' ? $prefix : 'journal/v1';
   }
 
   protected function sanitize(string $value): string {

@@ -38,7 +38,7 @@ export DRX_TIMEZONE="${DRX_TIMEZONE:-}"
 
 # -----------------------------------------------------------------------------
 # Shared S3 connection. Used by both Litestream (database replication) and
-# the Drupal file storage backend (user file uploads). One bucket, three
+# the Drupal file storage backend (user file uploads). One bucket, four
 # prefixes, one set of credentials.
 #
 # Layout inside the bucket:
@@ -46,6 +46,7 @@ export DRX_TIMEZONE="${DRX_TIMEZONE:-}"
 #   ${DRX_S3_PREFIX_PRIVATE}/      Drupal private files (Drupal-gated)
 #   ${DRX_S3_PREFIX_PUBLIC}/       Drupal public files  (anonymous read via
 #                                  bucket policy on this prefix only)
+#   ${DRX_S3_PREFIX_JOURNAL}/      Immutable file-change journal events
 #
 # Security posture: private by default. Public access exists only because
 # the bucket policy explicitly grants s3:GetObject on the public prefix;
@@ -67,6 +68,7 @@ export DRX_S3_SECRET_ACCESS_KEY="${DRX_S3_SECRET_ACCESS_KEY:-}"
 export DRX_S3_PREFIX_LITESTREAM="${DRX_S3_PREFIX_LITESTREAM:-litestream}"
 export DRX_S3_PREFIX_PRIVATE="${DRX_S3_PREFIX_PRIVATE:-private}"
 export DRX_S3_PREFIX_PUBLIC="${DRX_S3_PREFIX_PUBLIC:-public}"
+export DRX_S3_PREFIX_JOURNAL="${DRX_S3_PREFIX_JOURNAL:-journal/v1}"
 
 # Module/API contract. Secure-by-default: read-only JSON:API.
 export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"

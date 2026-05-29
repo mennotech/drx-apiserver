@@ -166,6 +166,7 @@ covers backup/restore and Drupal's file backend.
 | `drx-data-local/litestream/`   | Litestream SQLite replica.                             |
 | `drx-data-local/private/`      | Drupal **private://** uploads (Drupal-gated).          |
 | `drx-data-local/public/`       | Drupal **public://** uploads (anonymous read on this prefix only). |
+| `drx-data-local/journal/v1/`   | Immutable file-change journal events (`drx_s3_journal`). |
 
 For CI smoke tests that should skip S3 entirely, set
 `DRX_S3_REQUIRED=0` (the Makefile already does this for `make smoke`

@@ -61,7 +61,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Shared S3 connection (Litestream replica + Drupal file storage).
-      # One bucket, three prefixes: litestream/, private/, public/. The
+      # One bucket, four prefixes: litestream/, private/, public/,
+      # journal/v1/. The
       # base image takes this as the source of truth and bridges into
       # Litestream's native env vars on its own.
       DRX_S3_BUCKET: ${DRX_S3_BUCKET:-drx-data-local}
@@ -73,6 +74,7 @@ services:
       DRX_S3_PREFIX_LITESTREAM: ${DRX_S3_PREFIX_LITESTREAM:-litestream}
       DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
       DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
+      DRX_S3_PREFIX_JOURNAL: ${DRX_S3_PREFIX_JOURNAL:-journal/v1}
       # Litestream is driven by the shared DRX_S3_* contract. Bootstrap
       # bridges credentials from DRX_S3_* and
       # derives the replica URL from DRX_S3_BUCKET +

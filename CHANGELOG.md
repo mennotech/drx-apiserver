@@ -32,7 +32,7 @@ versioned — entries are grouped by the date of the corresponding
 - New reference-app module
   [drx_s3_journal](server/modules/custom/drx_s3_journal/) that writes
   one immutable JSON object per Drupal file create/update/delete to
-  `s3://${DRX_S3_BUCKET}/journal/v1/YYYY/MM/DD/HH/<TS>_<event_id>_<op>_<scope>_<fid>.json`,
+  `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_JOURNAL}/YYYY/MM/DD/HH/<TS>_<event_id>_<op>_<scope>_<fid>.json`,
   scoped to the `public://` and `private://` streams only. The
   lexicographic key layout is the replay contract: listing the bucket
   from any hourly prefix yields events in chronological order.

@@ -23,10 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - Shared S3 storage contract. A single bucket and credential pair are
-  now shared between Litestream (database replica) and Drupal's file
-  backend (`drupal/s3fs`), with three prefixes inside the bucket:
+  now shared between Litestream (database replica), Drupal's file
+  backend (`drupal/s3fs`), and overlay journal workflows, with four
+  prefixes inside the bucket:
   `${DRX_S3_PREFIX_LITESTREAM}/`, `${DRX_S3_PREFIX_PRIVATE}/`, and
-  `${DRX_S3_PREFIX_PUBLIC}/`. The public prefix is the **only** path
+  `${DRX_S3_PREFIX_PUBLIC}/`, plus `${DRX_S3_PREFIX_JOURNAL}/`. The
+  public prefix is the **only** path
   that is anonymously readable, and only when the bucket policy
   explicitly grants `s3:GetObject` on `<bucket>/<public-prefix>/*`;
   everything else is private and Drupal-gated.
@@ -74,7 +76,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `DRX_S3_REQUIRED=1`; shared by Litestream and `drupal/s3fs`.
 - `DRX_S3_PREFIX_LITESTREAM` (default `litestream`),
   `DRX_S3_PREFIX_PRIVATE` (default `private`),
-  `DRX_S3_PREFIX_PUBLIC` (default `public`) — three-prefix layout
+  `DRX_S3_PREFIX_PUBLIC` (default `public`),
+  `DRX_S3_PREFIX_JOURNAL` (default `journal/v1`) — four-prefix layout
   inside the shared bucket. The public prefix is the only path that
   may be exposed anonymously, and only via an explicit bucket policy.
 - `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).

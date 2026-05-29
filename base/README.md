@@ -150,7 +150,7 @@ RUN echo 'memory_limit = 512M' > /usr/local/etc/php/conf.d/99-overrides.ini
 The image treats S3 as the source of truth for user content and (when
 Litestream is enabled) the database replica. The container filesystem is
 treated as ephemeral. One bucket and one credential pair are shared
-between Litestream and Drupal's file backend (`drupal/s3fs`); three
+between Litestream and Drupal's file backend (`drupal/s3fs`); four
 prefixes separate concerns inside the bucket:
 
 | Prefix                                | Contents                       | Visibility                                              |
@@ -158,6 +158,7 @@ prefixes separate concerns inside the bucket:
 | `${DRX_S3_PREFIX_LITESTREAM}/`        | Litestream SQLite replica      | Private. Never exposed.                                  |
 | `${DRX_S3_PREFIX_PRIVATE}/`           | Drupal **private://** files    | Private. Streamed through Drupal access checks.          |
 | `${DRX_S3_PREFIX_PUBLIC}/`            | Drupal **public://** files     | Anonymous read, via an explicit bucket policy on this prefix only. |
+| `${DRX_S3_PREFIX_JOURNAL}/`           | Immutable file-change journal  | Private. Used by `drx_s3_journal` when present in downstream overlays. |
 
 Security posture is **private by default**. Public access exists only
 because the bucket policy explicitly grants `s3:GetObject` on the public
@@ -183,7 +184,7 @@ overlay provides a dev-only fallback of `drx-data-local`.
 | Variable                          | Default       | Notes                                                                                 |
 | --------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
 | `DRX_S3_REQUIRED`                 | `1`           | Master switch. `0` disables validation, probe, and `s3fs` module enable.              |
-| `DRX_S3_BUCKET`                   | _(unset)_     | **Required when enabled.** Single bucket shared by all three prefixes.                |
+| `DRX_S3_BUCKET`                   | _(unset)_     | **Required when enabled.** Single bucket shared by all four prefixes.                 |
 | `DRX_S3_REGION`                   | `us-east-1`   | S3 region.                                                                            |
 | `DRX_S3_ENDPOINT`                 | _(unset)_     | Optional. Custom endpoint for MinIO / S3-compatible stores.                           |
 | `DRX_S3_PUBLIC_HOST`              | _(unset)_     | Optional. Browser-facing `host[:port]` for public file URLs (s3fs CNAME). Must use a hostname different from the Drupal site host — Drupal's file URL generator compares hosts without ports, so `localhost:9000` against a site on `localhost:8088` is still treated as local and rewritten to an internal path. Use a distinct dev alias like `minio.127.0.0.1.nip.io:9000` or a hosts-file entry. |
@@ -193,6 +194,7 @@ overlay provides a dev-only fallback of `drx-data-local`.
 | `DRX_S3_PREFIX_LITESTREAM`        | `litestream`  | Prefix for Litestream replicas.                                                       |
 | `DRX_S3_PREFIX_PRIVATE`           | `private`     | Prefix for Drupal private files.                                                      |
 | `DRX_S3_PREFIX_PUBLIC`            | `public`      | Prefix for Drupal public files (must be matched by the bucket policy below).          |
+| `DRX_S3_PREFIX_JOURNAL`           | `journal/v1`  | Prefix for immutable file-change journal events (used by downstream `drx_s3_journal`). |
 
 #### Bucket policy (AWS S3)
 
