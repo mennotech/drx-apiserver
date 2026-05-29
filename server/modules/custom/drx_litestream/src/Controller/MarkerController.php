@@ -193,6 +193,14 @@ class MarkerController extends ControllerBase {
           ? $this->formatIsoDate((int) $m['verified_at'])
           : NULL,
       ];
+      if (!empty($m['journal_boundary_key'])) {
+        $boundaryAt = (int) ($m['journal_boundary_at'] ?? 0);
+        $payload['journal_boundary'] = [
+          'key' => (string) $m['journal_boundary_key'],
+          'event_id' => (string) ($m['journal_boundary_event_id'] ?? ''),
+          'occurred_at' => $boundaryAt > 0 ? $this->formatIsoDate($boundaryAt) : NULL,
+        ];
+      }
     }
 
     $payload['dev_restore_hint'] = [

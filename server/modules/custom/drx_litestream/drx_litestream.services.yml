@@ -31,3 +31,4 @@ services:
       - '@datetime.time'
       - '@config.factory'
       - '@logger.factory'
+      - '@?drx_s3_journal.journal'

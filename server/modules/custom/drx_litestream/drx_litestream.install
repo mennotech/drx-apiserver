@@ -49,6 +49,12 @@ function drx_litestream_schema(): array {
         'verify_state' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''],
         'verify_error' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
         'verified_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        // S3 journal boundary written into journal/v1/... while the
+        // site was quiesced. Defines the lexicographic upper bound
+        // for file events included in this snapshot.
+        'journal_boundary_key' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+        'journal_boundary_event_id' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE, 'default' => ''],
+        'journal_boundary_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
       ],
       'primary key' => ['id'],
       'unique keys' => ['uuid' => ['uuid']],
@@ -99,4 +105,23 @@ function drx_litestream_update_9001(): string {
   }
 
   return 'Added consistent-snapshot columns to drx_litestream_marker.';
+}
+
+/**
+ * Add S3 journal boundary columns to drx_litestream_marker.
+ */
+function drx_litestream_update_9002(): string {
+  $schema = \Drupal::database()->schema();
+  $table = 'drx_litestream_marker';
+  $columns = [
+    'journal_boundary_key' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+    'journal_boundary_event_id' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE, 'default' => ''],
+    'journal_boundary_at' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+  ];
+  foreach ($columns as $name => $spec) {
+    if (!$schema->fieldExists($table, $name)) {
+      $schema->addField($table, $name, $spec);
+    }
+  }
+  return 'Added S3 journal boundary columns to drx_litestream_marker.';
 }

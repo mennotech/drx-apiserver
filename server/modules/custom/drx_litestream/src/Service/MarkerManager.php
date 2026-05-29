@@ -44,6 +44,9 @@ class MarkerManager {
       'verify_state' => $data['verify_state'] ?? '',
       'verify_error' => $data['verify_error'] ?? '',
       'verified_at' => (int) ($data['verified_at'] ?? 0),
+      'journal_boundary_key' => $data['journal_boundary_key'] ?? '',
+      'journal_boundary_event_id' => $data['journal_boundary_event_id'] ?? '',
+      'journal_boundary_at' => (int) ($data['journal_boundary_at'] ?? 0),
     ])->execute();
   }
 

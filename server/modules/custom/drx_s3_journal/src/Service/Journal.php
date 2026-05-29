@@ -76,6 +76,48 @@ class Journal {
   }
 
   /**
+   * Emit a synthetic snapshot-boundary journal record.
+   *
+   * Written by the litestream snapshot orchestrator while the site is
+   * quiesced. The returned key is the lexicographic upper bound for
+   * file events included in the snapshot: a restore replays every
+   * journal object up to and including this key, then stops.
+   *
+   * @return array{key:string,event_id:string,occurred_at_utc:string,occurred_at:int}
+   */
+  public function emitSnapshotBoundary(string $snapshotLabel, string $snapshotUuid = ''): array {
+    $eventId = $this->uuidService->generate();
+    $nowUs = $this->nowMicroIso();
+    $payload = [
+      'schema' => 'drx-s3-journal/v1',
+      'event_id' => $eventId,
+      'occurred_at_utc' => $nowUs,
+      'op' => 'snapshot',
+      'stream' => 'meta',
+      'fid' => 0,
+      'snapshot' => [
+        'label' => $snapshotLabel,
+        'uuid' => $snapshotUuid,
+      ],
+      'request_id' => $this->getRequestId(),
+      'context' => $this->buildContext(),
+    ];
+    $key = $this->buildKey($nowUs, $eventId, 'snapshot', 'meta', 0);
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if ($json === FALSE) {
+      throw new \RuntimeException('drx_s3_journal: failed to encode snapshot-boundary payload');
+    }
+    $this->writer->put($key, $json);
+    $occurredAt = (new \DateTimeImmutable($nowUs))->getTimestamp();
+    return [
+      'key' => $key,
+      'event_id' => $eventId,
+      'occurred_at_utc' => $nowUs,
+      'occurred_at' => $occurredAt,
+    ];
+  }
+
+  /**
    * Public for the Drush "test" helper.
    *
    * @return array{key:string,payload:array<string,mixed>}

@@ -105,6 +105,7 @@ class SnapshotManifestWriter {
           'private' => (string) ($marker['s3_prefix_private'] ?? ''),
           'public' => (string) ($marker['s3_prefix_public'] ?? ''),
         ],
+        'journal_boundary' => $this->buildJournalBoundary($marker),
         'base_image_ref' => (string) ($marker['base_image_ref'] ?? ''),
         'drupal_site_uuid' => (string) ($marker['drupal_site_uuid'] ?? ''),
       ],
@@ -124,6 +125,30 @@ class SnapshotManifestWriter {
         ),
         'files' => 'Clone the source bucket prefixes up to restore.files_last_modified_cutoff using S3 object versions, then point DRX_S3_BUCKET at the cloned bucket.',
       ],
+    ];
+  }
+
+  /**
+   * Describe the S3 journal boundary written during snapshot capture.
+   *
+   * Restore replays every object under `journal/v1/` whose key is
+   * lexicographically <= `key`, then stops; the boundary record
+   * itself is a synthetic `snapshot` op and is not replayed.
+   *
+   * @param array<string, mixed> $marker
+   * @return array<string, mixed>|null
+   */
+  protected function buildJournalBoundary(array $marker): ?array {
+    $key = (string) ($marker['journal_boundary_key'] ?? '');
+    if ($key === '') {
+      return NULL;
+    }
+    $at = (int) ($marker['journal_boundary_at'] ?? 0);
+    return [
+      'key' => $key,
+      'event_id' => (string) ($marker['journal_boundary_event_id'] ?? ''),
+      'occurred_at' => $at,
+      'occurred_at_iso' => $at > 0 ? $this->formatIso($at) : NULL,
     ];
   }
 

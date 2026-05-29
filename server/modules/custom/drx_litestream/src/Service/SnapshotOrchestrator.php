@@ -9,6 +9,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\State\StateInterface;
+use Drupal\drx_s3_journal\Service\Journal;
 
 /**
  * Captures an application-consistent point-in-time marker.
@@ -82,6 +83,7 @@ class SnapshotOrchestrator {
     protected TimeInterface $time,
     protected ConfigFactoryInterface $configFactory,
     protected LoggerChannelFactoryInterface $loggerFactory,
+    protected ?Journal $journal = NULL,
   ) {}
 
   /**
@@ -255,6 +257,32 @@ class SnapshotOrchestrator {
       // the restore pin matches the fully-populated marker row.
       if (strcmp(strtolower($finalTxid), strtolower($preTxid)) > 0) {
         $this->markers->update($id, ['txid' => $finalTxid]);
+      }
+
+      // Emit a snapshot-boundary record into the S3 journal (when the
+      // drx_s3_journal module is enabled) so the manifest records the
+      // exact lexicographic upper bound for file events included in
+      // this snapshot. Restore replays journal objects up to and
+      // including this key, then stops. A failure here is non-fatal:
+      // the DB snapshot is still valid, we just log and continue.
+      $boundary = NULL;
+      if ($this->journal !== NULL) {
+        try {
+          $marker0 = $this->markers->load($id);
+          $boundary = $this->journal->emitSnapshotBoundary(
+            (string) ($meta['label'] ?? ''),
+            (string) ($marker0['uuid'] ?? ''),
+          );
+          $this->markers->update($id, [
+            'journal_boundary_key' => $boundary['key'],
+            'journal_boundary_event_id' => $boundary['event_id'],
+            'journal_boundary_at' => $boundary['occurred_at'],
+          ]);
+        }
+        catch (\Throwable $e) {
+          $log->warning('snapshot: journal boundary emit failed: @msg', ['@msg' => $e->getMessage()]);
+          $boundary = NULL;
+        }
       }
 
       $marker = $this->markers->load($id);
