@@ -48,8 +48,8 @@ TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
 DR_DRILL_HEALTH_TIMEOUT ?= 90
 DR_DRILL_SYNC_WAIT      ?= 3
-STACK_TEST_TIMEOUT      ?= 180
-STACK_TEST_ADMIN_PASS   ?= stack-test-password
+SMOKE_STACK_TIMEOUT      ?= 180
+SMOKE_STACK_ADMIN_PASS   ?= smoke-stack-password
 
 .PHONY: base app build up up-build down up-base down-base smoke smoke-stack scan verify dr-drill pit-drill snapshot-drill clean
 
@@ -152,23 +152,23 @@ verify: smoke scan
 # pre-push check for any change touching server/ or the bootstrap pipeline.
 smoke-stack: base
 	@set -e; \
-	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(STACK_TEST_ADMIN_PASS) \
+	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(SMOKE_STACK_ADMIN_PASS) \
 		$(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; \
 	echo "Building images..."; \
 	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) \
 		$(COMPOSE) $(COMPOSE_ARGS) build >/dev/null; \
 	echo "Starting full stack..."; \
-	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(STACK_TEST_ADMIN_PASS) \
+	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(SMOKE_STACK_ADMIN_PASS) \
 		$(COMPOSE) $(COMPOSE_ARGS) up --no-build -d >/dev/null; \
-	trap 'echo "--- drx-apiserver logs (tail) ---"; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs --tail=120 drx-apiserver || true; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true' EXIT; \
-	echo "Waiting up to $(STACK_TEST_TIMEOUT)s for backend health..."; \
+	trap 'rc=$$?; if [ $$rc -ne 0 ]; then echo "--- drx-apiserver logs (tail) ---"; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs --tail=120 drx-apiserver || true; fi; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; exit $$rc' EXIT; \
+	echo "Waiting up to $(SMOKE_STACK_TIMEOUT)s for backend health..."; \
 	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
 	[ -n "$$CID" ] || { echo "drx-apiserver container not found"; exit 1; }; \
-	for i in $$(seq 1 $(STACK_TEST_TIMEOUT)); do \
+	for i in $$(seq 1 $(SMOKE_STACK_TIMEOUT)); do \
 		if $(CONTAINER_ENGINE) exec $$CID /usr/local/bin/drx-healthcheck >/dev/null 2>&1; then \
 			echo "backend healthy after $${i}s"; break; \
 		fi; \
-		if [ $$i -eq $(STACK_TEST_TIMEOUT) ]; then echo "backend not healthy in $(STACK_TEST_TIMEOUT)s"; exit 1; fi; \
+		if [ $$i -eq $(SMOKE_STACK_TIMEOUT) ]; then echo "backend not healthy in $(SMOKE_STACK_TIMEOUT)s"; exit 1; fi; \
 		sleep 1; \
 	done; \
 	echo "Asserting S3 probe succeeded in bootstrap log..."; \

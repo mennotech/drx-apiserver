@@ -76,15 +76,15 @@ versioned — entries are grouped by the date of the corresponding
   [server/README.md](server/README.md) to reflect the production-required
   bucket and local fallback naming.
 
-#### Full-stack test
-- Added `make smoke-stack` (alias: `make stack-test`) to [Makefile](Makefile): boots the full
+#### Smoke-stack test
+- Added `make smoke-stack` to [Makefile](Makefile): boots the full
   reference compose stack (drx-apiserver + MinIO + bucket initialiser)
   with the production S3 posture (no `DRX_S3_REQUIRED=0` escape hatch),
   waits for the backend healthcheck, and asserts the bootstrap log
   shows a successful S3 probe + `s3fs` module enable plus that
   `GET /jsonapi/node/note` returns the three seeded notes. Tears the
   stack down on success and failure.
-- Added [.github/workflows/stack-test.yml](.github/workflows/stack-test.yml):
+- Added [.github/workflows/smoke-stack.yml](.github/workflows/smoke-stack.yml):
   runs `make smoke-stack` on every push and pull request that touches
   `base/`, `server/`, the `Makefile`, or the workflow itself.
 
