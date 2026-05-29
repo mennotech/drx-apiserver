@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\drx_s3_journal\Service;
 
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use GuzzleHttp\ClientInterface;
 
 /**
@@ -21,7 +20,6 @@ class JournalWriter {
 
   public function __construct(
     protected ClientInterface $http,
-    protected LoggerChannelFactoryInterface $loggerFactory,
   ) {}
 
   /**
@@ -119,6 +117,16 @@ class JournalWriter {
     if ($endpoint !== '') {
       $base = rtrim($endpoint, '/');
       $epParts = parse_url($base);
+      if (!is_array($epParts) || empty($epParts['host'])) {
+        throw new \RuntimeException('DRX_S3_ENDPOINT must include a valid host');
+      }
+      $path = (string) ($epParts['path'] ?? '');
+      if ($path !== '' && $path !== '/') {
+        throw new \RuntimeException('DRX_S3_ENDPOINT must not include a path component');
+      }
+      if (isset($epParts['query']) || isset($epParts['fragment'])) {
+        throw new \RuntimeException('DRX_S3_ENDPOINT must not include query or fragment components');
+      }
       $host = ($epParts['host'] ?? '') . (isset($epParts['port']) ? ':' . $epParts['port'] : '');
       $canonicalUri = '/' . rawurlencode($bucket) . '/' . $encodedKey;
       return [$base, $host, $canonicalUri];

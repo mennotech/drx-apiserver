@@ -86,9 +86,10 @@ class LitestreamStatus {
     $db = escapeshellarg($this->getDatabasePath());
     $sock = escapeshellarg($socket);
     $to = (int) max(1, $timeoutSeconds);
+    $timeout = escapeshellarg($to . 's');
     $out = [];
     $rc = 0;
-    @exec("$bin sync -socket $sock -wait -timeout $to $db 2>&1", $out, $rc);
+    @exec("$bin sync -socket $sock -wait -timeout $timeout $db 2>&1", $out, $rc);
     return [
       'ok' => $rc === 0,
       'output' => implode("\n", $out),

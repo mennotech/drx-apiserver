@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-## [0.0.5-rc5] - 2026-05-28
+## [0.0.5-rc5] - 2026-05-29
 
 ### Security
 - Litestream delivery is now built from source at the pinned

@@ -3,7 +3,6 @@ services:
     class: Drupal\drx_s3_journal\Service\JournalWriter
     arguments:
       - '@http_client'
-      - '@logger.factory'
 
   drx_s3_journal.journal:
     class: Drupal\drx_s3_journal\Service\Journal
