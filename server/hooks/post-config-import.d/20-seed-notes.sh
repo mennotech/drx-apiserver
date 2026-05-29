@@ -29,6 +29,11 @@ if (!$format || !$format->status()) {
 }
 $format_id = $format ? $format->id() : "plain_text";
 
+$sample_pdf = base64_decode("JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzMDAgMTQ0XSAvQ29udGVudHMgNCAwIFIgPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQgL0YxIDI0IFRmIDcyIDcyIFRkIChEclggTm90ZSBBdHRhY2htZW50KSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxMCAwMDAwMCBuIAowMDAwMDAwMDYwIDAwMDAwIG4gCjAwMDAwMDAxMTcgMDAwMDAgbiAKMDAwMDAwMDIxMCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9Sb290IDEgMCBSIC9TaXplIDUgPj4Kc3RhcnR4cmVmCjMwMgolJUVPRgo=");
+if ($sample_pdf === FALSE) {
+  throw new \RuntimeException("Failed to decode embedded sample PDF attachment");
+}
+
 $nodes = [
   [
     "title" => "Welcome to drx-apiserver",
@@ -37,6 +42,11 @@ $nodes = [
     "pinned" => TRUE,
     "category" => "reference",
     "tags" => ["welcome", "getting-started"],
+    "attachment" => [
+      "name" => "welcome-note.txt",
+      "body" => "Welcome to drx-apiserver notes. This text file is seeded as an example attachment.",
+      "description" => "Example text attachment",
+    ],
   ],
   [
     "title" => "Try the JSON:API",
@@ -45,6 +55,11 @@ $nodes = [
     "pinned" => FALSE,
     "category" => "project",
     "tags" => ["jsonapi", "demo"],
+    "attachment" => [
+      "name" => "api-quickstart.pdf",
+      "body" => $sample_pdf,
+      "description" => "Example PDF attachment",
+    ],
   ],
   [
     "title" => "Draft: ideas to follow up on",
@@ -57,10 +72,37 @@ $nodes = [
 ];
 
 foreach ($nodes as $data) {
+  $attachments = [];
+  if (!empty($data["attachment"])) {
+    $subdir = "note-attachments/" . gmdate("Y-m");
+    $dir_uri = "public://" . $subdir;
+    \Drupal::service("file_system")->prepareDirectory(
+      $dir_uri,
+      \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY | \Drupal\Core\File\FileSystemInterface::MODIFY_PERMISSIONS,
+    );
+
+    $repo = \Drupal::service("file.repository");
+    $raw_name = (string) ($data["attachment"]["name"] ?? "attachment.bin");
+    $safe_name = preg_replace("/[^A-Za-z0-9._-]+/", "-", $raw_name) ?: "attachment.bin";
+    $uri = $dir_uri . "/" . $safe_name;
+    $file = $repo->writeData(
+      (string) ($data["attachment"]["body"] ?? ""),
+      $uri,
+      \Drupal\Core\File\FileExists::Replace,
+    );
+    $file->setPermanent();
+    $file->save();
+    $attachments[] = [
+      "target_id" => (int) $file->id(),
+      "description" => (string) ($data["attachment"]["description"] ?? ""),
+    ];
+  }
+
   $node = \Drupal\node\Entity\Node::create([
     "type" => "note",
     "title" => $data["title"],
     "field_body" => ["value" => $data["body"], "format" => $format_id],
+    "field_attachments" => $attachments,
     "field_status" => $data["status_val"],
     "field_pinned" => $data["pinned"] ? 1 : 0,
     "field_category" => $data["category"],

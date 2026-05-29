@@ -57,7 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   skips env validation, the connectivity probe, and the `s3fs` module
   enable).
 - `DRX_S3_BUCKET`, `DRX_S3_REGION` (default `us-east-1`),
-  `DRX_S3_ENDPOINT`, `DRX_S3_FORCE_PATH_STYLE` (auto),
+  `DRX_S3_ENDPOINT`, `DRX_S3_PUBLIC_HOST`,
+  `DRX_S3_FORCE_PATH_STYLE` (auto),
   `DRX_S3_ACCESS_KEY_ID`, `DRX_S3_SECRET_ACCESS_KEY` — required when
   `DRX_S3_REQUIRED=1`; shared by Litestream and `drupal/s3fs`.
 - `DRX_S3_PREFIX_LITESTREAM` (default `litestream`),

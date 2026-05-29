@@ -186,6 +186,7 @@ overlay provides a dev-only fallback of `drx-data-local`.
 | `DRX_S3_BUCKET`                   | _(unset)_     | **Required when enabled.** Single bucket shared by all three prefixes.                |
 | `DRX_S3_REGION`                   | `us-east-1`   | S3 region.                                                                            |
 | `DRX_S3_ENDPOINT`                 | _(unset)_     | Optional. Custom endpoint for MinIO / S3-compatible stores.                           |
+| `DRX_S3_PUBLIC_HOST`              | _(unset)_     | Optional. Browser-facing `host[:port]` for public file URLs (s3fs CNAME). Must use a hostname different from the Drupal site host — Drupal's file URL generator compares hosts without ports, so `localhost:9000` against a site on `localhost:8088` is still treated as local and rewritten to an internal path. Use a distinct dev alias like `minio.127.0.0.1.nip.io:9000` or a hosts-file entry. |
 | `DRX_S3_FORCE_PATH_STYLE`         | _(auto)_      | Auto `true` when an endpoint is set, otherwise `false`. Override with `true`/`false`. |
 | `DRX_S3_ACCESS_KEY_ID`            | _(unset)_     | **Required when enabled.** Also seeded into Litestream's env if its own vars are unset. |
 | `DRX_S3_SECRET_ACCESS_KEY`        | _(unset)_     | **Required when enabled.**                                                            |

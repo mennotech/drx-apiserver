@@ -19,6 +19,42 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Added
 
+#### S3-backed content-change journal (drx_s3_journal overlay)
+- New reference-app module
+  [drx_s3_journal](server/modules/custom/drx_s3_journal/) that writes
+  one immutable JSON object per Drupal file create/update/delete to
+  `s3://${DRX_S3_BUCKET}/journal/v1/YYYY/MM/DD/HH/<TS>_<event_id>_<op>_<scope>_<fid>.json`,
+  scoped to the `public://` and `private://` streams only. The
+  lexicographic key layout is the replay contract: listing the bucket
+  from any hourly prefix yields events in chronological order.
+- Strict-audit semantics: write failures throw, which aborts the
+  surrounding Drupal request so no content mutation is confirmed
+  without a durable journal record.
+- Direct AWS SigV4 PUT via Guzzle (no Drupal stream wrappers, no
+  s3fs roundtrip) to avoid the recursion that would result from
+  journaling a journal write. Sends `If-None-Match: *` so retried
+  event IDs become harmless 412s instead of silent overwrites.
+- Drush helpers:
+  `drush drx:s3-journal:prefix --since=<ts>` prints the S3 prefix to
+  resume replay from; `drush drx:s3-journal:test` emits a synthetic
+  event to verify credentials + bucket policy.
+- The module no-ops silently when `DRX_S3_REQUIRED=0` (CI/smoke) and
+  is enabled on boot via
+  [server/hooks/post-modules.d/35-enable-drx-s3-journal.sh](server/hooks/post-modules.d/35-enable-drx-s3-journal.sh).
+
+#### Notes app attachments field + seeded examples
+- Added `field_attachments` (file, multi-value) to the reference
+  `note` content type scaffold in [server/schema/notes.yml](server/schema/notes.yml)
+  and the generated Drupal config payload under [server/config/](server/config/).
+- Attachment uploads are routed to a dedicated
+  `public://note-attachments/YYYY-MM/` directory layout.
+- Updated note form/display config so attachments are editable and
+  rendered in the default view mode.
+- Updated the first-boot notes seed hook
+  [server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh)
+  to attach one sample `.txt` file to the first note and one sample
+  `.pdf` file to the second note.
+
 #### S3 contract defaults (prod vs dev)
 - Clarified and documented the S3 bucket contract split:
   production keeps `DRX_S3_BUCKET` explicit and required when

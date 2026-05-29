@@ -3,6 +3,7 @@ status: true
 dependencies:
   config:
     - node.type.note
+    - field.field.node.note.field_attachments
     - field.field.node.note.field_body
     - field.field.node.note.field_status
     - field.field.node.note.field_pinned
@@ -10,6 +11,7 @@ dependencies:
     - field.field.node.note.field_note_tags
     - field.field.node.note.field_category
   module:
+    - file
     - node
     - text
     - options
@@ -19,12 +21,20 @@ targetEntityType: node
 bundle: note
 mode: default
 content:
+  field_attachments:
+    type: file_default
+    label: above
+    settings:
+      use_description_as_link_text: true
+    third_party_settings: {}
+    weight: 0
+    region: content
   field_body:
     type: text_default
     label: above
     settings: {}
     third_party_settings: {}
-    weight: 0
+    weight: 1
     region: content
   field_status:
     type: string
@@ -32,7 +42,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {}
-    weight: 1
+    weight: 2
     region: content
   field_pinned:
     type: boolean
@@ -42,7 +52,7 @@ content:
       format_custom_true: ''
       format_custom_false: ''
     third_party_settings: {}
-    weight: 2
+    weight: 3
     region: content
   field_due_date:
     type: datetime_default
@@ -51,7 +61,7 @@ content:
       timezone_override: ''
       format_type: medium
     third_party_settings: {}
-    weight: 3
+    weight: 4
     region: content
   field_note_tags:
     type: string
@@ -59,7 +69,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {}
-    weight: 4
+    weight: 5
     region: content
   field_category:
     type: string
@@ -67,6 +77,6 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {}
-    weight: 5
+    weight: 6
     region: content
 hidden: {}

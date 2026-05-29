@@ -41,6 +41,8 @@ if (getenv('DRX_S3_REQUIRED') !== '0') {
   $config['s3fs.settings']['root_folder']             = '';
   $config['s3fs.settings']['use_customhost']          = getenv('DRX_S3_ENDPOINT') ? TRUE : FALSE;
   $config['s3fs.settings']['hostname']                = getenv('DRX_S3_ENDPOINT') ?: '';
+  $config['s3fs.settings']['use_cname']               = getenv('DRX_S3_PUBLIC_HOST') ? TRUE : FALSE;
+  $config['s3fs.settings']['domain']                  = getenv('DRX_S3_PUBLIC_HOST') ?: '';
   $config['s3fs.settings']['use_path_style_endpoint'] = getenv('DRX_S3_ENDPOINT') ? TRUE : FALSE;
   $config['s3fs.settings']['use_https']               = (strpos(getenv('DRX_S3_ENDPOINT') ?: 'https://', 'https://') === 0) ? TRUE : FALSE;
   $config['s3fs.settings']['encryption']              = '';
