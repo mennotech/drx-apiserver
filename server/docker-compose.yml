@@ -33,7 +33,7 @@ services:
               mc mb -p local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
              mc version enable local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
               mc anonymous set download local/${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_PUBLIC:-public} >/dev/null 2>&1 || true;
-             echo 'minio-init: bucket ${DRX_S3_BUCKET:-drx-data-local} ready (versioning enabled; anonymous read on ${DRX_S3_PREFIX_PUBLIC:-public}/)'"
+             echo \"minio-init: bucket ${DRX_S3_BUCKET:-drx-data-local} ready (versioning enabled; anonymous read on ${DRX_S3_PREFIX_PUBLIC:-public}/)\""
     restart: 'no'
 
   drx-apiserver:

@@ -168,7 +168,7 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
-#### Wait for minio to stabalize before probing
+#### Wait for minio to stabilize before probing
 
 - Updated [server/docker-compose.yml](server/docker-compose.yml) so the
   reference app waits for `minio-init` to finish before bootstrapping,
