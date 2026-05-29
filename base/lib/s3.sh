@@ -41,12 +41,17 @@ drx::s3::validate_env() {
 # The image now consumes DRX_S3_* directly for endpoint / region / path-style
 # and only bridges the replica URL + credentials here.
 drx::s3::bridge_litestream() {
+    # Litestream lifecycle is derived from S3 posture: when S3 is bypassed,
+    # replication is disabled regardless of any user-provided env.
+    DRX_LITESTREAM_ENABLED="0"
+    export DRX_LITESTREAM_ENABLED
+
     drx::s3::required || return 0
     [ -n "${DRX_S3_BUCKET}" ] || return 0
 
     local expected_replica_url="s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}"
 
-    : "${DRX_LITESTREAM_ENABLED:=1}"
+    DRX_LITESTREAM_ENABLED="1"
     DRX_LITESTREAM_REPLICA_URL="${expected_replica_url}"
 
     # DRX_S3_* is the source of truth. Always bridge those values onto

@@ -194,8 +194,9 @@ The page reports:
 - Latest TXID present on the replica (read via `litestream ltx`).
 - The SQLite file's last-modified timestamp.
 
-If `DRX_LITESTREAM_ENABLED` is not `1`, the page shows a notice
-explaining how to opt in instead.
+If the shared `DRX_S3_*` contract is not active (`DRX_S3_REQUIRED=0`
+or missing bucket/credentials), the page shows a notice that
+replication is disabled.
 
 ### Capturing and exporting point-in-time markers
 
@@ -230,7 +231,6 @@ Two equivalent paths, both using values from the exported JSON:
 
    ```sh
    docker run --rm \
-     -e DRX_LITESTREAM_ENABLED=1 \
      -e DRX_S3_BUCKET=<BUCKET> \
      -e DRX_S3_ENDPOINT=<S3_ENDPOINT> \
      -e DRX_S3_REGION=<S3_REGION> \

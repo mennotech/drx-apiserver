@@ -228,11 +228,11 @@ mc anonymous set download local/<bucket>/<DRX_S3_PREFIX_PUBLIC>
 
 The image bundles the pinned `litestream` binary at
 `/usr/local/bin/litestream` and integrates it into bootstrap. The
-feature is **off by default**; opt in by setting
-`DRX_LITESTREAM_ENABLED=1`.
-When the shared S3 contract above is populated, `DRX_LITESTREAM_*`
-endpoint/region/path-style are taken from the `DRX_S3_*` values and
-Litestream credentials are always bridged from
+feature is derived from the shared S3 contract: when
+`DRX_S3_REQUIRED=1` with a valid bucket/credentials, Litestream is on;
+when `DRX_S3_REQUIRED=0`, Litestream is off.
+`DRX_LITESTREAM_*` endpoint/region/path-style are taken from the
+`DRX_S3_*` values and Litestream credentials are always bridged from
 `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`, so one set of
 vars covers both replication and file storage. The replica URL is
 derived from `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
@@ -255,7 +255,6 @@ ignores these settings.
 
 | Variable                              | Default              | Notes                                                                                 |
 | ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
-| `DRX_LITESTREAM_ENABLED`              | `0`                  | Master switch. `1` enables render + restore + replicate wrapping.                     |
 | `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
 | `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
 | `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |

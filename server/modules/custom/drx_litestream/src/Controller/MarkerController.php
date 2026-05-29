@@ -210,7 +210,6 @@ class MarkerController extends ControllerBase {
         escapeshellarg($m['replica_url'] ?? ''),
       ),
       'docker_env' => [
-        'DRX_LITESTREAM_ENABLED' => '1',
         'DRX_LITESTREAM_REPLICA_URL' => $m['replica_url'] ?? '',
         'DRX_LITESTREAM_RESTORE_ON_BOOT' => 'always',
         'DRX_LITESTREAM_RESTORE_TXID' => $m['txid'] ?? '',

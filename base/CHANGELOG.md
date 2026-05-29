@@ -51,11 +51,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Scaffolding for SQLite backup/restore via Litestream. The pinned
   `litestream` binary (v0.5.11) is now bundled in the runtime image at
   `/usr/local/bin/litestream`, and a new bootstrap library
-  `lib/litestream.sh` is sourced by `init.sh`. The feature is **off by
-  default**: `drx::litestream::enabled` returns false unless a future
-  release wires the activation env vars and `DRX_LITESTREAM_ENABLED=1`
-  is set.
-- Litestream restore-on-boot path. When `DRX_LITESTREAM_ENABLED=1`, the
+  `lib/litestream.sh` is sourced by `init.sh`.
+- Litestream restore-on-boot path. When the shared S3 contract is
+  active, the
   bootstrap renders `/etc/litestream.yml` from env vars and runs
   `litestream restore` against the configured replica before Drupal
   install detection. A populated local DB short-circuits the restore
@@ -81,7 +79,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   inside the shared bucket. The public prefix is the only path that
   may be exposed anonymously, and only via an explicit bucket policy.
 - `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).
-- `DRX_LITESTREAM_ENABLED` (default `0`).
 - `DRX_LITESTREAM_SYNC_INTERVAL` (default `1s`).
 - `DRX_LITESTREAM_RESTORE_ON_BOOT` (default `if-empty`).
 - `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
@@ -113,7 +110,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   in the shared S3 contract is `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
 
 ### Changed
-- When `DRX_LITESTREAM_ENABLED=1`, the bootstrap final exec is now
+- When the shared S3 contract is active, the bootstrap final exec is
   wrapped by `litestream replicate -config /etc/litestream.yml -exec
   "<CMD>"` instead of plain `exec "$@"`. The resulting process tree is
   `tini → drx-init → litestream → <CMD>` (typically Apache). Litestream

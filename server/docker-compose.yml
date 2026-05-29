@@ -75,12 +75,11 @@ services:
       DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
       DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
       DRX_S3_PREFIX_JOURNAL: ${DRX_S3_PREFIX_JOURNAL:-journal/v1}
-      # Litestream is driven by the shared DRX_S3_* contract. Bootstrap
+      # Litestream is derived from the shared DRX_S3_* contract. Bootstrap
       # bridges credentials from DRX_S3_* and
       # derives the replica URL from DRX_S3_BUCKET +
       # DRX_S3_PREFIX_LITESTREAM so there is a single source of truth
       # and no split-credential drift.
-      DRX_LITESTREAM_ENABLED: "1"
     restart: unless-stopped
 
 volumes:

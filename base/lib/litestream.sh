@@ -3,8 +3,8 @@
 # drx-apiserver base image: litestream integration.
 #
 # Provides functions for litestream-based SQLite backup/restore + writer
-# lifecycle wrapping. Disabled by default; downstream activates by setting
-# DRX_LITESTREAM_ENABLED=1 and providing a replica URL + credentials.
+# lifecycle wrapping. Enablement is derived by lib/s3.sh from the shared
+# DRX_S3_* contract (on when S3 is required, off when S3 is bypassed).
 #
 # Public API (functions sourced into bootstrap and exec phases):
 #   drx::litestream::enabled        — 0/1 predicate for "litestream active?"
@@ -21,7 +21,7 @@ drx::litestream::enabled() {
         return 1
     fi
     if ! command -v litestream >/dev/null 2>&1; then
-        drx::warn "DRX_LITESTREAM_ENABLED=1 but litestream binary is missing; treating as disabled"
+        drx::warn "litestream expected but binary is missing; treating as disabled"
         return 1
     fi
     return 0
@@ -51,7 +51,7 @@ drx::litestream::write_config() {
     fi
 
     [ -n "${DRX_LITESTREAM_REPLICA_URL}" ] || drx::die \
-        "DRX_LITESTREAM_ENABLED=1 but DRX_LITESTREAM_REPLICA_URL is empty."
+        "litestream is enabled but DRX_LITESTREAM_REPLICA_URL is empty."
 
     drx::log "litestream: writing config to ${target} (replica=${DRX_LITESTREAM_REPLICA_URL})"
 

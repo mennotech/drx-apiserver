@@ -33,7 +33,7 @@ class HealthController extends ControllerBase {
 
     if (!$this->status->isEnabled()) {
       $build['notice'] = [
-        '#markup' => $this->t('Litestream is <strong>disabled</strong> for this site. Set <code>DRX_LITESTREAM_ENABLED=1</code> in the container environment and provide a replica URL and credentials to enable replication.'),
+        '#markup' => $this->t('Litestream is <strong>disabled</strong> for this site. Enable the shared DRX_S3_* contract (<code>DRX_S3_REQUIRED=1</code> with bucket and credentials) to activate replication.'),
         '#prefix' => '<div class="messages messages--warning">',
         '#suffix' => '</div>',
       ];

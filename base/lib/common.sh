@@ -79,24 +79,23 @@ export DRUPAL_JSONAPI_READ_ONLY="${DRUPAL_JSONAPI_READ_ONLY:-1}"
 # and the BACKEND_URL host are always added.
 export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 
-# Litestream (SQLite backup/restore). Off by default unless the shared S3
-# contract is active (DRX_S3_REQUIRED=1 and DRX_S3_BUCKET set), in which
-# case lib/s3.sh::bridge_litestream enables it automatically. Set
-# DRX_LITESTREAM_ENABLED=0 explicitly to disable replication even when S3
-# is configured. When enabled, the bootstrap renders /etc/litestream.yml
-# from these vars (unless DRX_LITESTREAM_CONFIG_FILE points at an
-# operator-provided config), runs a restore-before-install on first boot,
-# and wraps Apache with `litestream replicate --exec` for ongoing replication.
+# Litestream (SQLite backup/restore). Enablement is derived internally from
+# the shared S3 contract: when DRX_S3_REQUIRED=1 and DRX_S3_BUCKET is set,
+# bootstrap enables Litestream automatically; when S3 is bypassed
+# (DRX_S3_REQUIRED=0), Litestream is disabled. When enabled, bootstrap
+# renders /etc/litestream.yml from these vars (unless
+# DRX_LITESTREAM_CONFIG_FILE points at an operator-provided config), runs a
+# restore-before-install on first boot, and wraps Apache with
+# `litestream replicate --exec` for ongoing replication.
 #
 # Replica destination and credentials come from the shared S3 contract:
 # DRX_S3_BUCKET / DRX_S3_PREFIX_LITESTREAM / DRX_S3_ACCESS_KEY_ID /
 # DRX_S3_SECRET_ACCESS_KEY. lib/s3.sh derives the effective Litestream
 # settings from those values.
 #
-# NOTE: intentionally NOT defaulted to "0" here so that bridge_litestream
-# can use := to set it to "1" when the shared S3 connection is present.
-# The inline default in drx::litestream::enabled (:-0) handles the unset case.
-export DRX_LITESTREAM_ENABLED
+# NOTE: DRX_LITESTREAM_ENABLED is intentionally not user-facing; it is set
+# internally by lib/s3.sh::bridge_litestream as a derived runtime flag.
+export DRX_LITESTREAM_ENABLED="${DRX_LITESTREAM_ENABLED:-0}"
 export DRX_LITESTREAM_SYNC_INTERVAL="${DRX_LITESTREAM_SYNC_INTERVAL:-1s}"
 # Restore policy: if-empty (default) | always | never.
 #   if-empty: restore only when the SQLite file is missing or has no tables

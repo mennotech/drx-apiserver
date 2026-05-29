@@ -184,8 +184,8 @@ RUN set -eux; \
 COPY --from=builder /usr/local/lib/php/extensions/        /usr/local/lib/php/extensions/
 COPY --from=builder /usr/local/etc/php/conf.d/            /usr/local/etc/php/conf.d/
 
-# Litestream binary for SQLite backup/restore (feature is off by default;
-# downstream activates via DRX_LITESTREAM_ENABLED=1 and replica env vars).
+# Litestream binary for SQLite backup/restore (feature is derived from
+# the shared DRX_S3_* contract at bootstrap time).
 COPY --from=litestream-fetch /usr/local/bin/litestream    /usr/local/bin/litestream
 
 # Apache configuration: Drupal docroot, required modules, hardening.

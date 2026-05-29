@@ -276,7 +276,6 @@ pit-drill: up-build
 	$(CONTAINER_ENGINE) run -d --name drx-pit --network $$net \
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_S3_REQUIRED=1 \
-		-e DRX_LITESTREAM_ENABLED=1 \
 		-e DRX_S3_BUCKET=drx-data-local \
 		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \
@@ -349,7 +348,6 @@ snapshot-drill: $(if $(SKIP_BUILD),up,up-build)
 	$(CONTAINER_ENGINE) run -d --name drx-snap-pit --network $$net \
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_S3_REQUIRED=1 \
-		-e DRX_LITESTREAM_ENABLED=1 \
 		-e DRX_S3_BUCKET=drx-data-local \
 		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \

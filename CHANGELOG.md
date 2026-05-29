@@ -17,14 +17,7 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
-## [2026-05-28] (drx-apiserver v0.0.5-rc5)
-
-### Fixed
-
-- Updated [server/docker-compose.yml](server/docker-compose.yml) so the
-  reference app waits for `minio-init` to finish before bootstrapping,
-  eliminating the local `make stack-test` race where the S3 probe could
-  run before MinIO bucket setup was ready.
+## [2026-05-29] (drx-apiserver v0.0.5-rc5)
 
 ### Added
 
@@ -174,6 +167,13 @@ versioned — entries are grouped by the date of the corresponding
   SIGINT, not SIGTERM; explicit handlers close the gap.
 
 ### Fixed
+
+#### Wait for minio to stabalize before probing
+
+- Updated [server/docker-compose.yml](server/docker-compose.yml) so the
+  reference app waits for `minio-init` to finish before bootstrapping,
+  eliminating the local `make stack-test` race where the S3 probe could
+  run before MinIO bucket setup was ready.
 
 #### Restore-TXID correctness in operator tooling
 - `drx_litestream` "live marker" form

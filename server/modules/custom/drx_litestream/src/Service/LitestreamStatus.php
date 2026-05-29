@@ -303,7 +303,7 @@ class LitestreamStatus {
 
     if (!$this->isEnabled()) {
       $state = 'disabled';
-      $issues[] = 'DRX_LITESTREAM_ENABLED is not set to 1.';
+      $issues[] = 'shared DRX_S3_* contract is not active.';
     }
     else {
       if (!$running) {

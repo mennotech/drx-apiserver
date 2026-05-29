@@ -108,7 +108,7 @@ class SnapshotOrchestrator {
    */
   public function createConsistent(array $meta): array {
     if (!$this->status->isEnabled()) {
-      throw new \RuntimeException('litestream is not enabled (DRX_LITESTREAM_ENABLED!=1)');
+      throw new \RuntimeException('litestream is not enabled (shared DRX_S3_* contract is inactive)');
     }
     if (empty($meta['label'])) {
       throw new \RuntimeException('label is required');

@@ -16,7 +16,7 @@ use Drupal\Core\Url;
  */
 function drx_litestream_help(string $route_name, RouteMatchInterface $route_match): string {
   if ($route_name === 'help.page.drx_litestream') {
-    return '<p>' . t('Surfaces litestream replication health and lets operators capture point-in-time markers for dev-machine restores. Requires the drx-apiserver base image with <code>DRX_LITESTREAM_ENABLED=1</code>.') . '</p>';
+    return '<p>' . t('Surfaces litestream replication health and lets operators capture point-in-time markers for dev-machine restores. Litestream is derived automatically from the shared DRX_S3_* contract in the drx-apiserver base image.') . '</p>';
   }
   return '';
 }
