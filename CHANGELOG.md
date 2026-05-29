@@ -17,6 +17,8 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+## [2026-05-28] (drx-apiserver v0.0.5-rc5)
+
 ### Added
 
 #### S3-backed content-change journal (drx_s3_journal overlay)

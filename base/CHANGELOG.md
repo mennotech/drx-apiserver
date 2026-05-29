@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.5-rc5] - 2026-05-28
+
 ### Added
 - Shared S3 storage contract. A single bucket and credential pair are
   now shared between Litestream (database replica) and Drupal's file
