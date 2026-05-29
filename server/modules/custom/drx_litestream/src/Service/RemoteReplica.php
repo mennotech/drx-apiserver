@@ -174,7 +174,7 @@ class RemoteReplica {
       }
       $signedHeaders = implode(';', $signedList);
 
-      $canonicalRequest = "GET\n{$canonicalUri}\n{$canonicalQuery}\n{$canonicalHeaders}\n{$signedHeaders}\n{$payloadHash}";
+      $canonicalRequest = "GET\n{$canonicalUri}\n{$canonicalQuery}\n{$canonicalHeaders}{$signedHeaders}\n{$payloadHash}";
       $scope = "{$today}/{$region}/s3/aws4_request";
       $stringToSign = "AWS4-HMAC-SHA256\n{$now}\n{$scope}\n" . hash('sha256', $canonicalRequest);
 

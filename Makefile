@@ -179,8 +179,8 @@ smoke-stack: base
 	echo "Asserting JSON:API returns seeded notes..."; \
 	body="$$($(CONTAINER_ENGINE) exec $$CID curl -fsS http://127.0.0.1/jsonapi/node/note)"; \
 	count="$$(printf '%s' "$$body" | grep -oE '"type":"node--note"' | wc -l | tr -d ' ')"; \
-	if [ "$$count" -lt 3 ]; then \
-		echo "FAIL: expected >=3 seeded notes, got $$count"; \
+	if [ "$$count" -ne 3 ]; then \
+		echo "FAIL: expected exactly 3 seeded notes, got $$count"; \
 		printf '%s\n' "$$body" | head -c 400; echo; \
 		exit 1; \
 	fi; \
