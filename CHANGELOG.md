@@ -17,6 +17,25 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Changed
+
+- Hardened [Makefile](Makefile) `make smoke-stack` admin-password handling:
+  it now treats `DRUPAL_ADMIN_PASS` as the only input, generates a
+  strong ephemeral password when it is not provided, and keeps the
+  value hidden by default (opt-in reveal via
+  `SHOW_ADMIN_PASS=1`).
+- Added a global [Makefile](Makefile) `SHOW_ADMIN_PASS=1` toggle so
+  up-oriented targets can reveal the active admin password on demand
+  (`make up`, `make up-base`, `make smoke-stack`) while remaining
+  hidden by default.
+- Standardized local boot targets on `DRUPAL_ADMIN_PASS` as the single
+  Drupal admin password variable: removed Makefile-specific
+  `BASE_UP_ADMIN_PASS` and replaced hardcoded smoke passwords with
+  generated ephemeral values when `DRUPAL_ADMIN_PASS` is unset.
+- Updated [.github/workflows/smoke-stack.yml](.github/workflows/smoke-stack.yml)
+  to stop hardcoding a static CI admin password; CI now uses the
+  Makefile-generated ephemeral password unless explicitly overridden.
+
 ## [2026-05-29] (drx-apiserver v0.0.5-rc5)
 
 ### Added

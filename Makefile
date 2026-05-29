@@ -23,7 +23,6 @@ APP_IMAGE    ?= drx-apiserver-demo:dev
 SMOKE_PORT   ?= 8089
 BASE_UP_PORT ?= 8087
 BASE_UP_CONTAINER ?= drx-base
-BASE_UP_ADMIN_PASS ?= dev-password
 VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -49,7 +48,7 @@ TRIVY_SEVERITY ?= CRITICAL,HIGH
 DR_DRILL_HEALTH_TIMEOUT ?= 90
 DR_DRILL_SYNC_WAIT      ?= 3
 SMOKE_STACK_TIMEOUT      ?= 180
-SMOKE_STACK_ADMIN_PASS   ?= smoke-stack-password
+SHOW_ADMIN_PASS         ?= 0
 
 .PHONY: base app build up up-build down up-base down-base smoke smoke-stack scan verify dr-drill pit-drill snapshot-drill clean
 
@@ -67,6 +66,13 @@ app: base
 build: app
 
 up:
+	@if [ "$(SHOW_ADMIN_PASS)" = "1" ]; then \
+		if [ -n "$(DRUPAL_ADMIN_PASS)" ]; then \
+			echo "up admin password (revealed): $(DRUPAL_ADMIN_PASS)"; \
+		else \
+			echo "up admin password: not set via make variable; compose may source it from .env"; \
+		fi; \
+	fi
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d
 
 up-build: app up
@@ -76,8 +82,18 @@ down:
 
 up-base: base
 	@$(CONTAINER_ENGINE) rm -f $(BASE_UP_CONTAINER) >/dev/null 2>&1 || true
+	@ADMIN_PASS="$(DRUPAL_ADMIN_PASS)"; \
+	if [ -z "$$ADMIN_PASS" ]; then \
+		ADMIN_PASS="$$(openssl rand -base64 24 | tr -d '\n')"; \
+	fi; \
+	if [ "$(SHOW_ADMIN_PASS)" = "1" ]; then \
+		echo "up-base admin password (revealed): $$ADMIN_PASS"; \
+	else \
+		echo "up-base admin password: set (hidden). Use SHOW_ADMIN_PASS=1 to reveal."; \
+	fi; \
+	export ADMIN_PASS; \
 	$(CONTAINER_ENGINE) run -d --name $(BASE_UP_CONTAINER) \
-		-e DRUPAL_ADMIN_PASS=$(BASE_UP_ADMIN_PASS) \
+		-e DRUPAL_ADMIN_PASS=$$ADMIN_PASS \
 		-e DRX_S3_REQUIRED=0 \
 		-p $(BASE_UP_PORT):80 $(BASE_IMAGE)
 
@@ -90,8 +106,17 @@ down-base:
 # HEALTHCHECK timers automatically).
 smoke: base
 	@$(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null 2>&1 || true
+	@ADMIN_PASS="$(DRUPAL_ADMIN_PASS)"; \
+	if [ -z "$$ADMIN_PASS" ]; then \
+		ADMIN_PASS="$$(openssl rand -base64 24 | tr -d '\n')"; \
+	fi; \
+	if [ "$(SHOW_ADMIN_PASS)" = "1" ]; then \
+		echo "smoke admin password (revealed): $$ADMIN_PASS"; \
+	else \
+		echo "smoke admin password: set (hidden). Use SHOW_ADMIN_PASS=1 to reveal."; \
+	fi; \
 	$(CONTAINER_ENGINE) run --rm -d --name drx-smoke \
-		-e DRUPAL_ADMIN_PASS=smoke-password \
+		-e DRUPAL_ADMIN_PASS=$$ADMIN_PASS \
 		-e DRX_S3_REQUIRED=0 \
 		-p $(SMOKE_PORT):80 $(BASE_IMAGE)
 	@echo "Waiting for healthcheck..."
@@ -152,13 +177,24 @@ verify: smoke scan
 # pre-push check for any change touching server/ or the bootstrap pipeline.
 smoke-stack: base
 	@set -e; \
-	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(SMOKE_STACK_ADMIN_PASS) \
+	if [ -n "$(DRUPAL_ADMIN_PASS)" ]; then \
+		DRUPAL_ADMIN_PASS="$(DRUPAL_ADMIN_PASS)"; \
+	else \
+		DRUPAL_ADMIN_PASS="$$(openssl rand -base64 24 | tr -d '\n')"; \
+	fi; \
+	export DRUPAL_ADMIN_PASS; \
+	if [ "$(SHOW_ADMIN_PASS)" = "1" ]; then \
+		echo "smoke-stack admin password (revealed): $$DRUPAL_ADMIN_PASS"; \
+	else \
+		echo "smoke-stack admin password: set (hidden). Use SHOW_ADMIN_PASS=1 to reveal."; \
+	fi; \
+	APP_IMAGE=$(APP_IMAGE) \
 		$(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; \
 	echo "Building images..."; \
 	APP_IMAGE=$(APP_IMAGE) DRX_BASE_IMAGE=$(BASE_IMAGE) \
 		$(COMPOSE) $(COMPOSE_ARGS) build >/dev/null; \
 	echo "Starting full stack..."; \
-	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(SMOKE_STACK_ADMIN_PASS) \
+	APP_IMAGE=$(APP_IMAGE) \
 		$(COMPOSE) $(COMPOSE_ARGS) up --no-build -d >/dev/null; \
 	trap 'rc=$$?; if [ $$rc -ne 0 ]; then echo "--- drx-apiserver logs (tail) ---"; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs --tail=120 drx-apiserver || true; fi; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; exit $$rc' EXIT; \
 	echo "Waiting up to $(SMOKE_STACK_TIMEOUT)s for backend health..."; \
