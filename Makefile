@@ -9,7 +9,7 @@
 # `make up-base` — run only the base image locally
 # `make down-base` — stop the base-only local container
 # `make smoke`  — boot the base image and hit its healthcheck
-# `make stack-test` — boot the full compose stack (app + MinIO) and assert
+# `make smoke-stack` — boot the full compose stack (app + MinIO) and assert
 #                     the seeded JSON:API endpoint returns the expected notes
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
@@ -51,7 +51,7 @@ DR_DRILL_SYNC_WAIT      ?= 3
 STACK_TEST_TIMEOUT      ?= 180
 STACK_TEST_ADMIN_PASS   ?= stack-test-password
 
-.PHONY: base app build up up-build down up-base down-base smoke stack-test scan verify dr-drill pit-drill snapshot-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke smoke-stack scan verify dr-drill pit-drill snapshot-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -150,7 +150,7 @@ verify: smoke scan
 #   * The bootstrap log shows a successful S3 probe and s3fs module enable
 # Tears the stack down on success or failure. This is the recommended
 # pre-push check for any change touching server/ or the bootstrap pipeline.
-stack-test: base
+smoke-stack: base
 	@set -e; \
 	APP_IMAGE=$(APP_IMAGE) DRUPAL_ADMIN_PASS=$(STACK_TEST_ADMIN_PASS) \
 		$(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; \
@@ -184,7 +184,7 @@ stack-test: base
 		printf '%s\n' "$$body" | head -c 400; echo; \
 		exit 1; \
 	fi; \
-	echo "stack-test ok: backend healthy, S3 probe ok, s3fs enabled, $$count notes via JSON:API"
+	echo "smoke-stack ok: backend healthy, S3 probe ok, s3fs enabled, $$count notes via JSON:API"
 
 # Local disaster-recovery drill for the reference app stack:
 # 1) boot app + minio, 2) write a DB marker + public file marker,

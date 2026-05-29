@@ -77,7 +77,7 @@ versioned — entries are grouped by the date of the corresponding
   bucket and local fallback naming.
 
 #### Full-stack test
-- Added `make stack-test` to [Makefile](Makefile): boots the full
+- Added `make smoke-stack` (alias: `make stack-test`) to [Makefile](Makefile): boots the full
   reference compose stack (drx-apiserver + MinIO + bucket initialiser)
   with the production S3 posture (no `DRX_S3_REQUIRED=0` escape hatch),
   waits for the backend healthcheck, and asserts the bootstrap log
@@ -85,7 +85,7 @@ versioned — entries are grouped by the date of the corresponding
   `GET /jsonapi/node/note` returns the three seeded notes. Tears the
   stack down on success and failure.
 - Added [.github/workflows/stack-test.yml](.github/workflows/stack-test.yml):
-  runs `make stack-test` on every push and pull request that touches
+  runs `make smoke-stack` on every push and pull request that touches
   `base/`, `server/`, the `Makefile`, or the workflow itself.
 
 #### Local DR drill workflow
@@ -172,7 +172,7 @@ versioned — entries are grouped by the date of the corresponding
 
 - Updated [server/docker-compose.yml](server/docker-compose.yml) so the
   reference app waits for `minio-init` to finish before bootstrapping,
-  eliminating the local `make stack-test` race where the S3 probe could
+  eliminating the local `make smoke-stack` race where the S3 probe could
   run before MinIO bucket setup was ready.
 
 #### Restore-TXID correctness in operator tooling
@@ -210,7 +210,7 @@ versioned — entries are grouped by the date of the corresponding
 - Pinned the MinIO + mc images in
   [server/docker-compose.yml](server/docker-compose.yml) to explicit
   release tags instead of the floating `:latest` tag, so local dev and
-  `make stack-test` are reproducible and not subject to drift when
+  `make smoke-stack` are reproducible and not subject to drift when
   MinIO publishes a new release.
 - Reference-app seed hook
   ([server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh))

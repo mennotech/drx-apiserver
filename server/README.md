@@ -135,7 +135,7 @@ make smoke
 Note: `make smoke` boots the **base** image, not this overlay, so it
 will not exercise the seeded notes. Use `make up` for that.
 
-`make stack-test` boots the full overlay against MinIO and asserts the
+`make smoke-stack` boots the full overlay against MinIO and asserts the
 seeded `note` records are reachable over JSON:API. It is the
 recommended end-to-end check before pushing changes that touch
 [server/](.) or the bootstrap pipeline.

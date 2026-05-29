@@ -6,7 +6,7 @@
 # JSON:API endpoint returns the expected note records. This is the
 # end-to-end counterpart to the base-image smoke test, which boots only
 # the base image with S3 disabled.
-name: stack-test
+name: smoke-stack
 
 on:
   push:
@@ -15,20 +15,20 @@ on:
       - 'base/**'
       - 'server/**'
       - 'Makefile'
-      - '.github/workflows/stack-test.yml'
+      - '.github/workflows/smoke-stack.yml'
   pull_request:
     paths:
       - 'base/**'
       - 'server/**'
       - 'Makefile'
-      - '.github/workflows/stack-test.yml'
+      - '.github/workflows/smoke-stack.yml'
 
 permissions:
   contents: read
 
 jobs:
-  stack-test:
-    name: full-stack (compose + minio)
+  smoke-stack:
+    name: smoke-stack (compose + minio)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,10 +40,10 @@ jobs:
           docker version
           docker compose version
 
-      - name: Run full-stack test
+      - name: Run smoke-stack test
         env:
-          DRUPAL_ADMIN_PASS: ci-stack-test-password
-        run: make stack-test
+          DRUPAL_ADMIN_PASS: ci-smoke-stack-password
+        run: make smoke-stack
 
       - name: Dump backend logs on failure
         if: failure()
