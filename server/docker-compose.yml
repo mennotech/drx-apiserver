@@ -7,7 +7,9 @@
 
 services:
   minio:
-    image: quay.io/minio/minio:latest
+    # Pinned to a published MinIO container release tag. Bump
+    # intentionally; do not float to :latest.
+    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --address ":9000" --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -21,7 +23,9 @@ services:
     restart: unless-stopped
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    # Pinned mc client; bump intentionally, see
+    # https://github.com/minio/mc/releases.
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       - minio
     entrypoint: >-
@@ -68,15 +72,12 @@ services:
       DRX_S3_PREFIX_LITESTREAM: ${DRX_S3_PREFIX_LITESTREAM:-litestream}
       DRX_S3_PREFIX_PRIVATE: ${DRX_S3_PREFIX_PRIVATE:-private}
       DRX_S3_PREFIX_PUBLIC: ${DRX_S3_PREFIX_PUBLIC:-public}
-      # Bridged Litestream env, set explicitly so out-of-band processes
-      # invoked via `docker compose exec` (drush, snapshot orchestrator,
-      # ops scripts) see the same values that base/lib/s3.sh derives at
-      # boot for the apache child. Without these the bridge only reaches
-      # the apache/litestream foreground process tree.
+      # Litestream is driven by the shared DRX_S3_* contract. Bootstrap
+      # bridges credentials from DRX_S3_* and
+      # derives the replica URL from DRX_S3_BUCKET +
+      # DRX_S3_PREFIX_LITESTREAM so there is a single source of truth
+      # and no split-credential drift.
       DRX_LITESTREAM_ENABLED: "1"
-      DRX_LITESTREAM_REPLICA_URL: s3://${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_LITESTREAM:-litestream}
-      LITESTREAM_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      LITESTREAM_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     restart: unless-stopped
 
 volumes:

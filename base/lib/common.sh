@@ -86,9 +86,9 @@ export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 # operator-provided config), runs a restore-before-install on first boot,
 # and wraps Apache with `litestream replicate --exec` for ongoing replication.
 #
-# Required when enabled: DRX_LITESTREAM_REPLICA_URL plus credentials
-# in litestream-native env vars (LITESTREAM_ACCESS_KEY_ID,
-# LITESTREAM_SECRET_ACCESS_KEY, or provider equivalents).
+# Required when enabled: DRX_LITESTREAM_REPLICA_URL. Credentials come
+# from DRX_S3_ACCESS_KEY_ID / DRX_S3_SECRET_ACCESS_KEY and are bridged
+# onto Litestream's native env vars by lib/s3.sh.
 #
 # NOTE: intentionally NOT defaulted to "0" here so that bridge_litestream
 # can use := to set it to "1" when the shared S3 connection is present.

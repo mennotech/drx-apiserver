@@ -188,7 +188,7 @@ overlay provides a dev-only fallback of `drx-data-local`.
 | `DRX_S3_ENDPOINT`                 | _(unset)_     | Optional. Custom endpoint for MinIO / S3-compatible stores.                           |
 | `DRX_S3_PUBLIC_HOST`              | _(unset)_     | Optional. Browser-facing `host[:port]` for public file URLs (s3fs CNAME). Must use a hostname different from the Drupal site host — Drupal's file URL generator compares hosts without ports, so `localhost:9000` against a site on `localhost:8088` is still treated as local and rewritten to an internal path. Use a distinct dev alias like `minio.127.0.0.1.nip.io:9000` or a hosts-file entry. |
 | `DRX_S3_FORCE_PATH_STYLE`         | _(auto)_      | Auto `true` when an endpoint is set, otherwise `false`. Override with `true`/`false`. |
-| `DRX_S3_ACCESS_KEY_ID`            | _(unset)_     | **Required when enabled.** Also seeded into Litestream's env if its own vars are unset. |
+| `DRX_S3_ACCESS_KEY_ID`            | _(unset)_     | **Required when enabled.** Canonical S3 access key used by both s3fs and Litestream. |
 | `DRX_S3_SECRET_ACCESS_KEY`        | _(unset)_     | **Required when enabled.**                                                            |
 | `DRX_S3_PREFIX_LITESTREAM`        | `litestream`  | Prefix for Litestream replicas.                                                       |
 | `DRX_S3_PREFIX_PRIVATE`           | `private`     | Prefix for Drupal private files.                                                      |
@@ -227,10 +227,15 @@ mc anonymous set download local/<bucket>/<DRX_S3_PREFIX_PUBLIC>
 The image bundles the pinned `litestream` binary at
 `/usr/local/bin/litestream` and integrates it into bootstrap. The
 feature is **off by default**; opt in by setting
-`DRX_LITESTREAM_ENABLED=1` and providing a replica URL plus credentials.
+`DRX_LITESTREAM_ENABLED=1`.
 When the shared S3 contract above is populated, `DRX_LITESTREAM_*`
-credentials/endpoint/region/path-style default to the `DRX_S3_*` values
-so a single set of vars covers both replication and file storage.
+endpoint/region/path-style are taken from the `DRX_S3_*` values and
+Litestream credentials are always bridged from
+`DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`, so one set of
+vars covers both replication and file storage. The replica URL is
+derived from `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}` and
+bootstrap will override a mismatched `DRX_LITESTREAM_REPLICA_URL` to
+avoid split configuration.
 
 When enabled, the bootstrap:
 
@@ -251,7 +256,7 @@ ignores these settings.
 | Variable                              | Default              | Notes                                                                                 |
 | ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
 | `DRX_LITESTREAM_ENABLED`              | `0`                  | Master switch. `1` enables render + restore + replicate wrapping.                     |
-| `DRX_LITESTREAM_REPLICA_URL`          | _(unset)_            | **Required when enabled.** e.g. `s3://bucket/prefix`.                                 |
+| `DRX_LITESTREAM_REPLICA_URL`          | `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}` (when `DRX_S3_REQUIRED=1`) | Derived from shared S3 vars in the default contract. Keep explicit only for non-standard/manual litestream configs. |
 | `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
 | `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
 | `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |
@@ -261,10 +266,9 @@ ignores these settings.
 | `DRX_LITESTREAM_CONTROL_SOCKET`       | `/var/run/litestream.sock` | Path of the litestream daemon's control socket. Used by snapshot tooling running as a non-root user inside the container to call `litestream sync` / `litestream info`. Set to an empty string to disable the socket. |
 | `DRX_LITESTREAM_CONTROL_SOCKET_PERMS` | `0666`               | File mode on the control socket. `0666` lets the orchestrator (running as `www-data`) connect without extra chown plumbing; the socket only exposes intra-container RPCs so this is acceptable. |
 
-Credentials are passed through using litestream-native env vars
-(`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`) or the
-AWS_*-style equivalents. The image does not source any cloud-provider
-credential helpers; mount or inject them via your deployment platform.
+The image does not source cloud-provider credential helpers; provide
+`DRX_S3_ACCESS_KEY_ID` and `DRX_S3_SECRET_ACCESS_KEY` directly via your
+deployment platform.
 
 The base image only provides the runtime contract. Operator-facing UI
 (replication health dashboard, point-in-time marker capture and export)

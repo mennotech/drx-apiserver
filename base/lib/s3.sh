@@ -44,10 +44,19 @@ drx::s3::bridge_litestream() {
     drx::s3::required || return 0
     [ -n "${DRX_S3_BUCKET}" ] || return 0
 
+    local expected_replica_url="s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}"
+
     : "${DRX_LITESTREAM_ENABLED:=1}"
-    : "${DRX_LITESTREAM_REPLICA_URL:=s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}}"
-    : "${LITESTREAM_ACCESS_KEY_ID:=${DRX_S3_ACCESS_KEY_ID}}"
-    : "${LITESTREAM_SECRET_ACCESS_KEY:=${DRX_S3_SECRET_ACCESS_KEY}}"
+    if [ -n "${DRX_LITESTREAM_REPLICA_URL:-}" ] && [ "${DRX_LITESTREAM_REPLICA_URL}" != "${expected_replica_url}" ]; then
+        drx::warn "litestream: DRX_LITESTREAM_REPLICA_URL='${DRX_LITESTREAM_REPLICA_URL}' does not match shared S3 contract; overriding with '${expected_replica_url}'"
+    fi
+    DRX_LITESTREAM_REPLICA_URL="${expected_replica_url}"
+
+    # DRX_S3_* is the source of truth. Always bridge those values onto
+    # Litestream's native env contract so callers cannot accidentally
+    # split credentials between two independent variable sets.
+    LITESTREAM_ACCESS_KEY_ID="${DRX_S3_ACCESS_KEY_ID}"
+    LITESTREAM_SECRET_ACCESS_KEY="${DRX_S3_SECRET_ACCESS_KEY}"
 
     export DRX_LITESTREAM_ENABLED DRX_LITESTREAM_REPLICA_URL \
            LITESTREAM_ACCESS_KEY_ID LITESTREAM_SECRET_ACCESS_KEY

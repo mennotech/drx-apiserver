@@ -43,7 +43,18 @@ if (getenv('DRX_S3_REQUIRED') !== '0') {
   $config['s3fs.settings']['hostname']                = getenv('DRX_S3_ENDPOINT') ?: '';
   $config['s3fs.settings']['use_cname']               = getenv('DRX_S3_PUBLIC_HOST') ? TRUE : FALSE;
   $config['s3fs.settings']['domain']                  = getenv('DRX_S3_PUBLIC_HOST') ?: '';
-  $config['s3fs.settings']['use_path_style_endpoint'] = getenv('DRX_S3_ENDPOINT') ? TRUE : FALSE;
+  // Path-style addressing: honor explicit DRX_S3_FORCE_PATH_STYLE
+  // (true/false/1/0/yes/no), otherwise auto-enable when a custom
+  // endpoint is set (MinIO and most self-hosted S3 backends require
+  // it). This matches base/lib/litestream.sh and base/lib/s3_probe.php
+  // so all three S3 consumers agree on addressing mode.
+  $drx_s3_force_path = strtolower((string) (getenv('DRX_S3_FORCE_PATH_STYLE') ?: ''));
+  if ($drx_s3_force_path === '') {
+    $config['s3fs.settings']['use_path_style_endpoint'] = getenv('DRX_S3_ENDPOINT') ? TRUE : FALSE;
+  }
+  else {
+    $config['s3fs.settings']['use_path_style_endpoint'] = in_array($drx_s3_force_path, ['1', 'true', 'yes'], TRUE);
+  }
   $config['s3fs.settings']['use_https']               = (strpos(getenv('DRX_S3_ENDPOINT') ?: 'https://', 'https://') === 0) ? TRUE : FALSE;
   $config['s3fs.settings']['encryption']              = '';
 }

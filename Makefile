@@ -261,8 +261,9 @@ pit-drill: up-build
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web sql:query \
 		"DELETE FROM key_value WHERE collection='drx_pit'; INSERT INTO key_value (collection, name, value) VALUES ('drx_pit','pin','A');" >/dev/null; \
 	sleep $(DR_DRILL_SYNC_WAIT); \
-	txid_a="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver litestream status -config /etc/litestream.yml | awk 'NR>1{print $$3}' | tail -1)"; \
-	if [ -z "$$txid_a" ]; then echo "failed to capture TXID after marker A"; exit 1; fi; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver litestream sync -config /etc/litestream.yml -wait -timeout 30s /var/drupal-db/db.sqlite >/dev/null 2>&1 || true; \
+	txid_a="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver litestream ltx -config /etc/litestream.yml -level all /var/drupal-db/db.sqlite | awk '/^[[:space:]]*[0-9a-fA-F]{16}[[:space:]]+[0-9a-fA-F]{16}/{print $$2}' | sort | tail -1)"; \
+	if [ -z "$$txid_a" ]; then echo "failed to capture LTX TXID after marker A"; exit 1; fi; \
 	echo "Captured TXID A = $$txid_a"; \
 	echo "Overwriting with marker B"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) exec -T -u www-data drx-apiserver /var/www/html/vendor/bin/drush --root=/var/www/html/web sql:query \
@@ -274,13 +275,16 @@ pit-drill: up-build
 	echo "Booting sidecar container pinned to TXID A"; \
 	$(CONTAINER_ENGINE) run -d --name drx-pit --network $$net \
 		-e DRUPAL_ADMIN_PASS=ignored \
+		-e DRX_S3_REQUIRED=1 \
 		-e DRX_LITESTREAM_ENABLED=1 \
 		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
+		-e DRX_S3_BUCKET=drx-data-local \
+		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \
+		-e DRX_S3_ACCESS_KEY_ID=minioadmin \
+		-e DRX_S3_SECRET_ACCESS_KEY=minioadmin \
 		-e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
 		-e DRX_LITESTREAM_RESTORE_TXID=$$txid_a \
-		-e LITESTREAM_ACCESS_KEY_ID=minioadmin \
-		-e LITESTREAM_SECRET_ACCESS_KEY=minioadmin \
 		$(BASE_IMAGE) >/dev/null; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
 		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' drx-pit 2>/dev/null || true )"; \
@@ -345,14 +349,16 @@ snapshot-drill: $(if $(SKIP_BUILD),up,up-build)
 	echo "Booting sidecar pinned to snapshot TXID"; \
 	$(CONTAINER_ENGINE) run -d --name drx-snap-pit --network $$net \
 		-e DRUPAL_ADMIN_PASS=ignored \
-		-e DRX_S3_REQUIRED=0 \
+		-e DRX_S3_REQUIRED=1 \
 		-e DRX_LITESTREAM_ENABLED=1 \
 		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
+		-e DRX_S3_BUCKET=drx-data-local \
+		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \
+		-e DRX_S3_ACCESS_KEY_ID=minioadmin \
+		-e DRX_S3_SECRET_ACCESS_KEY=minioadmin \
 		-e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
 		-e DRX_LITESTREAM_RESTORE_TXID=$$txid \
-		-e LITESTREAM_ACCESS_KEY_ID=minioadmin \
-		-e LITESTREAM_SECRET_ACCESS_KEY=minioadmin \
 		$(BASE_IMAGE) >/dev/null; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
 		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' drx-snap-pit 2>/dev/null || true )"; \

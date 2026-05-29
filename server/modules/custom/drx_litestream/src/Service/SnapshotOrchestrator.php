@@ -116,7 +116,7 @@ class SnapshotOrchestrator {
 
     $log = $this->loggerFactory->get('drx_litestream');
 
-    $lockTtl = (float) $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_TTL', 120);
+    $lockTtl = (float) $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_TTL', 900);
     $drainSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_DRAIN_SECS', 3);
     $replicaTimeout = $this->envInt('DRX_LITESTREAM_SNAPSHOT_TIMEOUT', 30);
     $lockWaitSecs = $this->envInt('DRX_LITESTREAM_SNAPSHOT_LOCK_WAIT', 10);

@@ -12,6 +12,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.0.5-rc5] - 2026-05-28
 
+### Security
+- Litestream delivery is now built from source at the pinned
+  `v0.5.11` tag with an explicit patched gRPC dependency
+  (`google.golang.org/grpc` `v1.79.3`) and a current Go toolchain,
+  replacing the prebuilt upstream binary artifact. This addresses
+  Trivy-reported HIGH/CRITICAL vulnerabilities in the embedded
+  `gobinary` dependency graph while preserving the base image runtime
+  contract.
+
 ### Added
 - Shared S3 storage contract. A single bucket and credential pair are
   now shared between Litestream (database replica) and Drupal's file
@@ -29,8 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   standard `public://` and `private://` stream wrappers transparently
   resolve under the shared bucket.
 - Mandatory S3 bootstrap. New `lib/s3.sh` validates the `DRX_S3_*` env
-  contract, fills in any missing `DRX_LITESTREAM_*` credentials,
-  endpoint, region, and path-style defaults from the shared vars, and
+  contract, derives Litestream connection settings from the shared vars,
+  and
   runs a SigV4-signed probe (`HEAD <bucket>` plus
   `GET <bucket>?versioning=`)
   (`lib/s3_probe.php`, dependency-free PHP) before storage and Litestream
@@ -98,9 +107,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   stable LTX-space TXIDs by force-flushing pending WAL frames on
   demand instead of waiting for `sync-interval`. Set the path to an
   empty string to disable the socket entirely.
-- Credentials are passed through using litestream-native env vars
-  (`LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, or the
-  AWS_*-style equivalents).
+- Litestream credentials are sourced from
+  `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`. The replica URL
+  in the shared S3 contract is `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
 
 ### Changed
 - When `DRX_LITESTREAM_ENABLED=1`, the bootstrap final exec is now
@@ -110,6 +119,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   forwards signals to the wrapped process and performs a final WAL
   checkpoint + replica sync on graceful shutdown (SIGTERM). When the
   feature is disabled the exec path is unchanged.
+- Litestream credentials are now always derived from
+  `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY` when S3 is
+  required. Shared S3 credentials remain the only supported source of
+  truth during bootstrap, preventing split-credential configurations
+  between s3fs and replica writes.
+- The shared S3 contract is now also authoritative for
+  `DRX_LITESTREAM_REPLICA_URL` when S3 is required. Bootstrap derives
+  it from `DRX_S3_BUCKET` + `DRX_S3_PREFIX_LITESTREAM` and overrides
+  mismatched manual values to prevent endpoint/path drift.
 
 ## [0.0.3-rc3] - 2026-05-27
 

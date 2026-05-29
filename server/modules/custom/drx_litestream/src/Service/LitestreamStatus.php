@@ -328,12 +328,12 @@ class LitestreamStatus {
         }
         $issues[] = 'replica latest TXID could not be read';
       }
-      elseif ($localTxid !== '—' && strcasecmp($localTxid, $replicaTxid) !== 0) {
-        if ($state !== 'failing') {
-          $state = 'degraded';
-        }
-        $issues[] = 'replica appears behind local TXID';
-      }
+      // Note: we intentionally do not compare $localTxid (WAL-local
+      // counter from `litestream status`, resets on checkpoint) to
+      // $replicaTxid (LTX-space TXID from `litestream ltx`). They live
+      // in different namespaces; a mismatch is normal and does not
+      // imply the replica is behind. Replication lag is signalled by
+      // the daemon-not-running / status-error branches above.
     }
 
     return [

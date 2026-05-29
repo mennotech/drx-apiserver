@@ -124,8 +124,8 @@ class RemoteReplica {
 
     $endpoint = getenv('DRX_S3_ENDPOINT') ?: '';
     $region = getenv('DRX_S3_REGION') ?: 'us-east-1';
-    $key = getenv('LITESTREAM_ACCESS_KEY_ID') ?: (getenv('AWS_ACCESS_KEY_ID') ?: '');
-    $secret = getenv('LITESTREAM_SECRET_ACCESS_KEY') ?: (getenv('AWS_SECRET_ACCESS_KEY') ?: '');
+    $key = getenv('DRX_S3_ACCESS_KEY_ID') ?: '';
+    $secret = getenv('DRX_S3_SECRET_ACCESS_KEY') ?: '';
     if ($key === '' || $secret === '') {
       throw new \RuntimeException('missing S3 credentials');
     }

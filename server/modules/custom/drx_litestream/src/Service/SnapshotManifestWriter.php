@@ -181,10 +181,8 @@ class SnapshotManifestWriter {
     [$base, $host, $canonicalUri] = $this->buildEndpoint($bucket, $key);
 
     $region = getenv('DRX_S3_REGION') ?: 'us-east-1';
-    $keyId = getenv('LITESTREAM_ACCESS_KEY_ID')
-      ?: (getenv('DRX_S3_ACCESS_KEY_ID') ?: (getenv('AWS_ACCESS_KEY_ID') ?: ''));
-    $secret = getenv('LITESTREAM_SECRET_ACCESS_KEY')
-      ?: (getenv('DRX_S3_SECRET_ACCESS_KEY') ?: (getenv('AWS_SECRET_ACCESS_KEY') ?: ''));
+    $keyId = getenv('DRX_S3_ACCESS_KEY_ID') ?: '';
+    $secret = getenv('DRX_S3_SECRET_ACCESS_KEY') ?: '';
     if ($keyId === '' || $secret === '') {
       throw new \RuntimeException('missing S3 credentials');
     }

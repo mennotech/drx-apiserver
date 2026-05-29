@@ -166,6 +166,55 @@ versioned — entries are grouped by the date of the corresponding
   for 15 minutes. PHP's default shutdown-function path only runs on
   SIGINT, not SIGTERM; explicit handlers close the gap.
 
+### Fixed
+
+#### Restore-TXID correctness in operator tooling
+- `drx_litestream` "live marker" form
+  ([MarkerForm.php](server/modules/custom/drx_litestream/src/Form/MarkerForm.php))
+  now records the replica's latest LTX-space TXID (via
+  `LitestreamStatus::getReplicaLatestTxid()`) instead of the
+  WAL-local counter from `litestream status`. The previous value was
+  not a valid argument to `litestream restore -txid` and could
+  produce markers whose exported restore hint failed.
+- `LitestreamStatus::getHealthSnapshot()`
+  ([LitestreamStatus.php](server/modules/custom/drx_litestream/src/Service/LitestreamStatus.php))
+  no longer compares the local WAL TXID against the replica's LTX
+  TXID. The two values live in different namespaces, so the prior
+  "replica appears behind local TXID" warning was a false positive.
+- `make pit-drill` ([Makefile](Makefile)) captures the pin TXID via
+  `litestream ltx -level all` (max `max_txid`) plus an explicit
+  `litestream sync -wait`, so the drill exercises the same restore
+  contract the orchestrator and the markers UI rely on.
+- `drx_litestream` snapshot orchestrator
+  ([SnapshotOrchestrator.php](server/modules/custom/drx_litestream/src/Service/SnapshotOrchestrator.php))
+  default `DRX_LITESTREAM_SNAPSHOT_LOCK_TTL` is now `900` seconds,
+  matching the documented default. Previously the code used `120`s,
+  which could let the cron lock expire mid-snapshot on slower hosts.
+
+#### S3 / dev-stack consistency
+- The s3fs settings block
+  ([base/lib/settings.sh](base/lib/settings.sh)) now honours
+  `DRX_S3_FORCE_PATH_STYLE` for `use_path_style_endpoint`, matching
+  the existing semantics in
+  [base/lib/litestream.sh](base/lib/litestream.sh) and
+  [base/lib/s3_probe.php](base/lib/s3_probe.php). Previously s3fs
+  always derived path-style from `DRX_S3_ENDPOINT` alone, which could
+  diverge from the bootstrap probe / Litestream config.
+- Pinned the MinIO + mc images in
+  [server/docker-compose.yml](server/docker-compose.yml) to explicit
+  release tags instead of the floating `:latest` tag, so local dev and
+  `make stack-test` are reproducible and not subject to drift when
+  MinIO publishes a new release.
+- Reference-app seed hook
+  ([server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh))
+  now calls `base64_decode(..., TRUE)` so the existing `=== FALSE`
+  guard actually catches malformed input instead of being dead code.
+- Litestream credential wiring now treats `DRX_S3_ACCESS_KEY_ID` /
+  `DRX_S3_SECRET_ACCESS_KEY` as the authoritative source during
+  bootstrap ([base/lib/s3.sh](base/lib/s3.sh)); `make pit-drill` and
+  `make snapshot-drill` sidecar restores now pass `DRX_S3_*` credentials
+  directly from the shared S3 contract.
+
 ---
 
 ## [2026-05-27] (drx-apiserver v0.0.4-rc4)

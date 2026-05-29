@@ -12,7 +12,7 @@ use Drupal\drx_litestream\Service\MarkerManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Form: capture a point-in-time marker from the current local TXID.
+ * Form: capture a point-in-time marker from the current replica LTX TXID.
  */
 class MarkerForm extends FormBase {
 
@@ -33,12 +33,15 @@ class MarkerForm extends FormBase {
   }
 
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $local = $this->status->getLocalStatus();
-    $txid = $local['local_txid'] ?? '';
+    // The marker's `txid` must be a value that `litestream restore -txid`
+    // accepts. That is the LTX-space TXID reported by `litestream ltx`,
+    // NOT the WAL-local `local_txid` from `litestream status` (which is
+    // reset on checkpoint and is not a valid restore argument).
+    $txid = $this->status->getReplicaLatestTxid() ?? '';
     $replica = $this->status->getReplicaUrl();
 
     $form['summary'] = [
-      '#markup' => $this->t('Captures the current local TXID and replica URL as a named marker. Export the marker as JSON and apply the embedded <code>litestream restore -txid &lt;txid&gt;</code> command on a dev machine to reproduce this exact point in time.'),
+      '#markup' => $this->t('Captures the current replica LTX TXID and replica URL as a named marker. Export the marker as JSON and apply the embedded <code>litestream restore -txid &lt;txid&gt;</code> command on a dev machine to reproduce this exact point in time.'),
       '#prefix' => '<p>',
       '#suffix' => '</p>',
     ];
@@ -81,17 +84,18 @@ class MarkerForm extends FormBase {
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    $local = $this->status->getLocalStatus();
+    // See buildForm(): the marker pin must be the LTX-space TXID.
+    $txid = $this->status->getReplicaLatestTxid() ?? '';
     $id = $this->markers->create([
       'label' => (string) $form_state->getValue('label'),
       'description' => (string) $form_state->getValue('description'),
       'notes' => (string) $form_state->getValue('notes'),
       'replica_url' => $this->status->getReplicaUrl() ?? '',
-      'txid' => $local['local_txid'] ?? '',
+      'txid' => $txid,
     ]);
     $this->messenger()->addStatus($this->t('Marker captured (id=@id, txid=@txid).', [
       '@id' => $id,
-      '@txid' => $local['local_txid'] ?? '?',
+      '@txid' => $txid !== '' ? $txid : '?',
     ]));
     $form_state->setRedirectUrl(Url::fromRoute('drx_litestream.markers'));
   }

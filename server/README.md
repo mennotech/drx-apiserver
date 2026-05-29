@@ -231,10 +231,12 @@ Two equivalent paths, both using values from the exported JSON:
    docker run --rm \
      -e DRX_LITESTREAM_ENABLED=1 \
      -e DRX_LITESTREAM_REPLICA_URL=<REPLICA_URL> \
+     -e DRX_S3_ENDPOINT=<S3_ENDPOINT> \
+     -e DRX_S3_REGION=<S3_REGION> \
+     -e DRX_S3_ACCESS_KEY_ID=<key> \
+     -e DRX_S3_SECRET_ACCESS_KEY=<secret> \
      -e DRX_LITESTREAM_RESTORE_ON_BOOT=always \
      -e DRX_LITESTREAM_RESTORE_TXID=<TXID> \
-     -e LITESTREAM_ACCESS_KEY_ID=<key> \
-     -e LITESTREAM_SECRET_ACCESS_KEY=<secret> \
      ghcr.io/mennotech/drx-apiserver:<tag>
    ```
 

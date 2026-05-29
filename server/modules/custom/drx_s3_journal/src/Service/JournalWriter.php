@@ -50,10 +50,8 @@ class JournalWriter {
     [$base, $host, $canonicalUri] = $this->buildEndpoint($bucket, $key);
 
     $region = (string) (getenv('DRX_S3_REGION') ?: 'us-east-1');
-    $keyId = (string) (getenv('DRX_S3_ACCESS_KEY_ID')
-      ?: (getenv('LITESTREAM_ACCESS_KEY_ID') ?: getenv('AWS_ACCESS_KEY_ID')));
-    $secret = (string) (getenv('DRX_S3_SECRET_ACCESS_KEY')
-      ?: (getenv('LITESTREAM_SECRET_ACCESS_KEY') ?: getenv('AWS_SECRET_ACCESS_KEY')));
+    $keyId = (string) (getenv('DRX_S3_ACCESS_KEY_ID') ?: '');
+    $secret = (string) (getenv('DRX_S3_SECRET_ACCESS_KEY') ?: '');
     if ($keyId === '' || $secret === '') {
       throw new \RuntimeException('missing S3 credentials for journal write');
     }
