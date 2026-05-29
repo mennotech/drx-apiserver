@@ -44,7 +44,8 @@ services:
         BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-apiserver:dev}
     image: ${APP_IMAGE:-drx-apiserver-demo:dev}
     depends_on:
-      - minio
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "8088:80"
     environment:

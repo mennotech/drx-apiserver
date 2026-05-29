@@ -233,9 +233,7 @@ endpoint/region/path-style are taken from the `DRX_S3_*` values and
 Litestream credentials are always bridged from
 `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`, so one set of
 vars covers both replication and file storage. The replica URL is
-derived from `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}` and
-bootstrap will override a mismatched `DRX_LITESTREAM_REPLICA_URL` to
-avoid split configuration.
+derived from `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
 
 When enabled, the bootstrap:
 
@@ -256,7 +254,6 @@ ignores these settings.
 | Variable                              | Default              | Notes                                                                                 |
 | ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
 | `DRX_LITESTREAM_ENABLED`              | `0`                  | Master switch. `1` enables render + restore + replicate wrapping.                     |
-| `DRX_LITESTREAM_REPLICA_URL`          | `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}` (when `DRX_S3_REQUIRED=1`) | Derived from shared S3 vars in the default contract. Keep explicit only for non-standard/manual litestream configs. |
 | `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
 | `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
 | `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |

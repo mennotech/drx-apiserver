@@ -79,8 +79,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   may be exposed anonymously, and only via an explicit bucket policy.
 - `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).
 - `DRX_LITESTREAM_ENABLED` (default `0`).
-- `DRX_LITESTREAM_REPLICA_URL` (required when enabled, e.g.
-  `s3://bucket/prefix`).
 - `DRX_LITESTREAM_SYNC_INTERVAL` (default `1s`).
 - `DRX_LITESTREAM_RESTORE_ON_BOOT` (default `if-empty`).
 - `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
@@ -124,10 +122,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   required. Shared S3 credentials remain the only supported source of
   truth during bootstrap, preventing split-credential configurations
   between s3fs and replica writes.
-- The shared S3 contract is now also authoritative for
-  `DRX_LITESTREAM_REPLICA_URL` when S3 is required. Bootstrap derives
-  it from `DRX_S3_BUCKET` + `DRX_S3_PREFIX_LITESTREAM` and overrides
-  mismatched manual values to prevent endpoint/path drift.
+- The shared S3 contract is now also authoritative for the Litestream
+  replica destination when S3 is required. Bootstrap derives it from
+  `DRX_S3_BUCKET` + `DRX_S3_PREFIX_LITESTREAM` to prevent
+  endpoint/path drift.
 
 ## [0.0.3-rc3] - 2026-05-27
 

@@ -230,7 +230,7 @@ Two equivalent paths, both using values from the exported JSON:
    ```sh
    docker run --rm \
      -e DRX_LITESTREAM_ENABLED=1 \
-     -e DRX_LITESTREAM_REPLICA_URL=<REPLICA_URL> \
+     -e DRX_S3_BUCKET=<BUCKET> \
      -e DRX_S3_ENDPOINT=<S3_ENDPOINT> \
      -e DRX_S3_REGION=<S3_REGION> \
      -e DRX_S3_ACCESS_KEY_ID=<key> \

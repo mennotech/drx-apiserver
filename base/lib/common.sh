@@ -86,15 +86,15 @@ export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 # operator-provided config), runs a restore-before-install on first boot,
 # and wraps Apache with `litestream replicate --exec` for ongoing replication.
 #
-# Required when enabled: DRX_LITESTREAM_REPLICA_URL. Credentials come
-# from DRX_S3_ACCESS_KEY_ID / DRX_S3_SECRET_ACCESS_KEY and are bridged
-# onto Litestream's native env vars by lib/s3.sh.
+# Replica destination and credentials come from the shared S3 contract:
+# DRX_S3_BUCKET / DRX_S3_PREFIX_LITESTREAM / DRX_S3_ACCESS_KEY_ID /
+# DRX_S3_SECRET_ACCESS_KEY. lib/s3.sh derives the effective Litestream
+# settings from those values.
 #
 # NOTE: intentionally NOT defaulted to "0" here so that bridge_litestream
 # can use := to set it to "1" when the shared S3 connection is present.
 # The inline default in drx::litestream::enabled (:-0) handles the unset case.
 export DRX_LITESTREAM_ENABLED
-export DRX_LITESTREAM_REPLICA_URL="${DRX_LITESTREAM_REPLICA_URL:-}"
 export DRX_LITESTREAM_SYNC_INTERVAL="${DRX_LITESTREAM_SYNC_INTERVAL:-1s}"
 # Restore policy: if-empty (default) | always | never.
 #   if-empty: restore only when the SQLite file is missing or has no tables

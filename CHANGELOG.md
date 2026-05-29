@@ -19,6 +19,13 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [2026-05-28] (drx-apiserver v0.0.5-rc5)
 
+### Fixed
+
+- Updated [server/docker-compose.yml](server/docker-compose.yml) so the
+  reference app waits for `minio-init` to finish before bootstrapping,
+  eliminating the local `make stack-test` race where the S3 probe could
+  run before MinIO bucket setup was ready.
+
 ### Added
 
 #### S3-backed content-change journal (drx_s3_journal overlay)
@@ -214,6 +221,9 @@ versioned — entries are grouped by the date of the corresponding
   bootstrap ([base/lib/s3.sh](base/lib/s3.sh)); `make pit-drill` and
   `make snapshot-drill` sidecar restores now pass `DRX_S3_*` credentials
   directly from the shared S3 contract.
+- Litestream replica destination is likewise derived from the shared
+  S3 contract instead of being passed separately in local examples and
+  drill sidecars.
 
 ---
 

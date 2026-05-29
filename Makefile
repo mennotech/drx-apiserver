@@ -277,7 +277,6 @@ pit-drill: up-build
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_S3_REQUIRED=1 \
 		-e DRX_LITESTREAM_ENABLED=1 \
-		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
 		-e DRX_S3_BUCKET=drx-data-local \
 		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \
@@ -351,7 +350,6 @@ snapshot-drill: $(if $(SKIP_BUILD),up,up-build)
 		-e DRUPAL_ADMIN_PASS=ignored \
 		-e DRX_S3_REQUIRED=1 \
 		-e DRX_LITESTREAM_ENABLED=1 \
-		-e DRX_LITESTREAM_REPLICA_URL=s3://drx-data-local/litestream \
 		-e DRX_S3_BUCKET=drx-data-local \
 		-e DRX_S3_REGION=us-east-1 \
 		-e DRX_S3_ENDPOINT=http://minio:9000 \
