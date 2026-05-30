@@ -45,6 +45,11 @@ versioned — entries are grouped by the date of the corresponding
   the hook tracks the base bootstrap's runtime contract
   (`DRUPAL_ROOT`, `DRUSH`) and matches the pattern used by sibling
   hooks.
+- [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml)
+  now also runs on `pull_request` targeting `main`, so supported-image
+  Trivy SARIF categories are present during PR code scanning and no
+  longer show as missing configuration (`neutral`) when compared to
+  `main`.
 
 ### Changed
 
