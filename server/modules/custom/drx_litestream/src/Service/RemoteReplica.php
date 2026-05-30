@@ -210,11 +210,13 @@ class RemoteReplica {
 
       $body = (string) $response->getBody();
       $xml = new \SimpleXMLElement($body);
-      foreach ($xml->Contents as $obj) {
+      $ns = $xml->getNamespaces(TRUE);
+      $root = !empty($ns['']) ? $xml->children($ns['']) : $xml;
+      foreach ($root->Contents as $obj) {
         $bytes += (int) $obj->Size;
         $objects++;
       }
-      $next = (string) ($xml->NextContinuationToken ?? '');
+      $next = (string) ($root->NextContinuationToken ?? '');
       $continuation = ($next !== '') ? $next : NULL;
 
       $pages++;
