@@ -22,7 +22,7 @@ class MarkerForm extends FormBase {
   ) {}
 
   /**
-   *
+   * Creates the form using container-managed services.
    */
   public static function create(ContainerInterface $container): static {
     return new static(
@@ -32,14 +32,14 @@ class MarkerForm extends FormBase {
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function getFormId(): string {
     return 'drx_litestream_marker_form';
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     // The marker's `txid` must be a value that `litestream restore -txid`
@@ -93,7 +93,7 @@ class MarkerForm extends FormBase {
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     // See buildForm(): the marker pin must be the LTX-space TXID.

@@ -7,6 +7,9 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Link;
+use Drupal\Core\Url;
+
 /**
  * Implements hook_schema().
  */
@@ -124,4 +127,93 @@ function drx_litestream_update_9002(): string {
     }
   }
   return 'Added S3 journal boundary columns to drx_litestream_marker.';
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function drx_litestream_requirements(string $phase): array {
+  $requirements = [];
+  if ($phase !== 'runtime') {
+    return $requirements;
+  }
+
+  /** @var \Drupal\drx_litestream\Service\LitestreamStatus $status */
+  $status = \Drupal::service('drx_litestream.status');
+  /** @var \Drupal\drx_litestream\Service\RemoteReplica $remote */
+  $remote = \Drupal::service('drx_litestream.remote_replica');
+  $snapshot = $status->getHealthSnapshot();
+  $remoteSize = $remote->getRemoteSize();
+  $severityMap = [
+    'healthy' => REQUIREMENT_OK,
+    'degraded' => REQUIREMENT_WARNING,
+    'disabled' => REQUIREMENT_WARNING,
+    'failing' => REQUIREMENT_ERROR,
+  ];
+  $valueMap = [
+    'healthy' => t('Healthy'),
+    'degraded' => t('Degraded'),
+    'disabled' => t('Disabled'),
+    'failing' => t('Failing'),
+  ];
+  $state = $snapshot['state'];
+  $severity = $severityMap[$state] ?? REQUIREMENT_WARNING;
+  $value = $valueMap[$state] ?? t('Unknown');
+
+  $details = [
+    t('Daemon: @v', ['@v' => $snapshot['running'] ? 'running' : 'not running']),
+    t('Local status: @v', ['@v' => $snapshot['local_status']]),
+    t('WAL size: @v', ['@v' => $snapshot['wal_size']]),
+    t('Computed remote size: @v', ['@v' => drx_litestream_format_remote_size_for_requirements($remoteSize)]),
+    t('Replica URL: @v', ['@v' => $snapshot['replica_url']]),
+  ];
+
+  if (!empty($snapshot['issues'])) {
+    $details[] = t('Issues: @v', ['@v' => implode('; ', $snapshot['issues'])]);
+  }
+
+  $details[] = Link::fromTextAndUrl(t('Open detailed litestream dashboard'), Url::fromRoute('drx_litestream.health'))->toString();
+
+  $paragraph = implode('<br>', array_map(
+    static fn($line) => (string) $line,
+    $details,
+  ));
+
+  $requirements['drx_litestream_replication'] = [
+    'title' => t('DrX Litestream replication'),
+    'value' => $value,
+    'severity' => $severity,
+    'description' => [
+      '#markup' => '<p>' . $paragraph . '</p>',
+    ],
+  ];
+
+  return $requirements;
+}
+
+/**
+ * Formats remote backup size for status report details.
+ *
+ * @param array<string, mixed> $remote
+ *   Result from RemoteReplica::getRemoteSize().
+ *
+ * @return string
+ *   Human-readable size plus object count, or an error marker.
+ */
+function drx_litestream_format_remote_size_for_requirements(array $remote): string {
+  if (empty($remote['available'])) {
+    return (string) ($remote['error'] ?? '—');
+  }
+
+  $bytes = (int) ($remote['bytes'] ?? 0);
+  $objects = (int) ($remote['objects'] ?? 0);
+  $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+  $i = 0;
+  $v = (float) $bytes;
+  while ($v >= 1024 && $i < count($units) - 1) {
+    $v /= 1024;
+    $i++;
+  }
+
+  return sprintf('%.2f %s (%d objects)', $v, $units[$i], $objects);
 }

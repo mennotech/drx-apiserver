@@ -90,6 +90,7 @@ class SnapshotOrchestrator {
    * Capture a consistent marker.
    *
    * @param array{label:string, description?:string, notes?:string} $meta
+   *   Marker metadata provided by the caller.
    *
    * @return array{
    *   id:int,
@@ -98,7 +99,7 @@ class SnapshotOrchestrator {
    *   consistent_at?:int,
    *   manifest_key?:string,
    *   error?:string,
-   *   }
+   *   }.
    *
    * @throws \RuntimeException
    *   If litestream is not enabled, the cron lock cannot be acquired,
@@ -426,7 +427,7 @@ class SnapshotOrchestrator {
   }
 
   /**
-   *
+   * Reads a positive integer from environment with fallback defaults.
    */
   protected function envInt(string $key, int $default, bool $allowZero = FALSE): int {
     $v = getenv($key);
@@ -471,10 +472,10 @@ class SnapshotOrchestrator {
   }
 
   /**
-   * Reset signal handlers to PHP defaults after the snapshot completes
-   * normally, so a later SIGINT/SIGTERM (e.g. a long-running drush
-   * session after this command finishes) is not still routed to the
-   * snapshot cleanup closure.
+   * Reset signal handlers to PHP defaults after snapshot completion.
+   *
+   * This avoids routing later SIGINT/SIGTERM events from unrelated
+   * CLI work to the snapshot cleanup closure.
    */
   protected function restoreSignalHandlers(): void {
     if (!function_exists('pcntl_signal')) {

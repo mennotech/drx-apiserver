@@ -22,21 +22,21 @@ class LitestreamStatus {
   ) {}
 
   /**
-   *
+   * Returns whether litestream is enabled for this runtime.
    */
   public function isEnabled(): bool {
     return getenv('DRX_LITESTREAM_ENABLED') === '1';
   }
 
   /**
-   *
+   * Returns the absolute path to the litestream binary.
    */
   public function getBinary(): string {
     return '/usr/local/bin/litestream';
   }
 
   /**
-   *
+   * Returns the litestream config path used by this runtime.
    */
   public function getConfigPath(): string {
     $v = getenv('DRX_LITESTREAM_CONFIG_FILE');
@@ -44,7 +44,7 @@ class LitestreamStatus {
   }
 
   /**
-   *
+   * Returns the replica URL, or NULL when not configured.
    */
   public function getReplicaUrl(): ?string {
     $v = getenv('DRX_LITESTREAM_REPLICA_URL');
@@ -52,7 +52,7 @@ class LitestreamStatus {
   }
 
   /**
-   *
+   * Returns the SQLite database path managed by litestream.
    */
   public function getDatabasePath(): string {
     $v = getenv('DRUPAL_SQLITE_PATH');
@@ -128,6 +128,7 @@ class LitestreamStatus {
    * Parse the human-readable `litestream status` output.
    *
    * @return array{database?:string,status?:string,local_txid?:string,wal_size?:string,error?:string}
+   *   Parsed local replication status fields.
    */
   public function getLocalStatus(): array {
     if (!$this->isEnabled()) {
@@ -213,6 +214,7 @@ class LitestreamStatus {
    *   snapshot_interval?: string,
    *   snapshot_retention?: string,
    *   }
+   *   Retention mode details derived from the active config.
    */
   public function getRetentionInfo(): array {
     $path = $this->getConfigPath();
@@ -263,6 +265,7 @@ class LitestreamStatus {
    * Returns a redacted view of the live litestream config.
    *
    * @return array{ok:bool,text?:string,error?:string}
+   *   Sanitized YAML text or an error description.
    */
   public function getSanitizedConfigSummary(): array {
     $path = $this->getConfigPath();
@@ -300,6 +303,7 @@ class LitestreamStatus {
    *   replica_url:string,
    *   issues:array<int,string>,
    *   }
+   *   Consolidated health state used by UI and requirements checks.
    */
   public function getHealthSnapshot(): array {
     $local = $this->getLocalStatus();
@@ -385,7 +389,7 @@ class LitestreamStatus {
   }
 
   /**
-   *
+   * Returns TRUE when a configuration key should be redacted.
    */
   protected function isSensitiveKey(string $key): bool {
     $k = strtolower($key);

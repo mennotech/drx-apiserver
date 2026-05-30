@@ -21,8 +21,10 @@ class DrxLitestreamCommands extends DrushCommands {
   }
 
   /**
-   * Drush 12 instantiates command classes that expose a static create()
-   * via the Drupal container. This avoids the legacy
+   * Creates command handlers from Drupal's service container.
+   *
+   * Drush 12 instantiates command classes via static create(), which
+   * avoids the legacy
    * `drush.services.yml` parser, which does not understand Symfony's
    * `@service` argument references.
    */

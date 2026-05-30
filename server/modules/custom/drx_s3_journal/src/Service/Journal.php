@@ -14,8 +14,7 @@ use Drupal\file\FileInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Builds and emits one journal record per Drupal file change for the
- * `public://` and `private://` streams.
+ * Builds and emits one journal record per Drupal file change.
  *
  * Strict-audit semantics: write failures bubble up as exceptions, so
  * the surrounding Drupal request fails and no content mutation is
@@ -29,8 +28,9 @@ class Journal {
   protected const TRACKED_STREAMS = ['public', 'private'];
 
   /**
-   * Per-request id, so multiple events from the same HTTP request can
-   * be correlated at replay time.
+   * Per-request id for correlating emitted events.
+   *
+   * Multiple journal events produced by one HTTP request share this id.
    */
   protected ?string $requestId = NULL;
 
@@ -46,8 +46,10 @@ class Journal {
   ) {}
 
   /**
-   * Record a file event. No-op when the journal is not configured or
-   * the file lives outside a tracked stream.
+   * Records a file event for tracked stream wrappers.
+   *
+   * No-ops when the journal is not configured or the file is outside
+   * a tracked stream.
    */
   public function record(string $op, FileInterface $file): void {
     if (!$this->writer->isEnabled()) {
@@ -84,6 +86,7 @@ class Journal {
    * journal object up to and including this key, then stops.
    *
    * @return array{key:string,event_id:string,occurred_at_utc:string,occurred_at:int}
+   *   Boundary key metadata for snapshot restore replay.
    */
   public function emitSnapshotBoundary(string $snapshotLabel, string $snapshotUuid = ''): array {
     $eventId = $this->uuidService->generate();
@@ -118,9 +121,10 @@ class Journal {
   }
 
   /**
-   * Public for the Drush "test" helper.
+   * Emits a synthetic event for the Drush connectivity test.
    *
    * @return array{key:string,payload:array<string,mixed>}
+   *   S3 object key and JSON payload that were written.
    */
   public function emitTestEvent(): array {
     $eventId = $this->uuidService->generate();
@@ -146,8 +150,7 @@ class Journal {
   }
 
   /**
-   * Return the lexicographic prefix that contains all events at-or-after
-   * the given unix timestamp, suitable for resuming replay.
+   * Returns the lexicographic replay prefix for a unix timestamp.
    *
    * The hourly prefix is the coarsest stable prefix; the caller is
    * expected to drop records whose `occurred_at_utc` is earlier than
@@ -158,7 +161,10 @@ class Journal {
   }
 
   /**
+   * Builds the canonical journal payload for a file event.
+   *
    * @return array<string,mixed>
+   *   Event payload written as JSON to S3.
    */
   protected function buildPayload(
     string $eventId,
@@ -188,7 +194,10 @@ class Journal {
   }
 
   /**
+   * Builds request/user context metadata for the journal payload.
+   *
    * @return array<string,mixed>
+   *   Context fields describing actor and request metadata.
    */
   protected function buildContext(): array {
     $request = $this->requestStack->getCurrentRequest();
@@ -206,6 +215,7 @@ class Journal {
    * Snapshot of {file_usage} for this fid at the moment of the event.
    *
    * @return list<array{module:string,type:string,id:string,count:int}>
+  *   Current file usage rows keyed by module/type/id.
    */
   protected function collectUsage(int $fid): array {
     if ($fid <= 0 || !$this->database->schema()->tableExists('file_usage')) {
@@ -230,7 +240,7 @@ class Journal {
   }
 
   /**
-   *
+   * Returns tracked stream scope from a file URI.
    */
   protected function scopeFromUri(string $uri): ?string {
     $pos = strpos($uri, '://');
@@ -273,7 +283,7 @@ class Journal {
   }
 
   /**
-   *
+   * Returns the configured journal prefix.
    */
   protected function journalPrefix(): string {
     $prefix = (string) (getenv('DRX_S3_PREFIX_JOURNAL') ?: 'journal/v1');
@@ -282,7 +292,7 @@ class Journal {
   }
 
   /**
-   *
+   * Normalizes values for safe key-path components.
    */
   protected function sanitize(string $value): string {
     $value = preg_replace('/[^A-Za-z0-9._-]+/', '-', $value) ?? '';
@@ -290,7 +300,7 @@ class Journal {
   }
 
   /**
-   *
+   * Returns a UTC timestamp string with microsecond precision.
    */
   protected function nowMicroIso(): string {
     // Microsecond precision UTC ISO-8601, e.g. 2026-05-29T14:35:01.123456Z.
@@ -305,7 +315,7 @@ class Journal {
   }
 
   /**
-   *
+   * Returns a stable request id for correlation across emitted events.
    */
   protected function getRequestId(): string {
     if ($this->requestId === NULL) {

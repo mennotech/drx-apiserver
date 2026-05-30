@@ -33,6 +33,7 @@ class SnapshotManifestWriter {
    *   Marker row as returned by MarkerManager::load().
    *
    * @return array{ok:bool,key?:string,error?:string}
+   *   Write result with object key on success or an error on failure.
    */
   public function write(array $marker): array {
     if (!$this->status->isEnabled()) {
@@ -69,8 +70,10 @@ class SnapshotManifestWriter {
    * Build the human-browsable manifest payload.
    *
    * @param array<string, mixed> $marker
+   *   Marker row data loaded from storage.
    *
    * @return array<string, mixed>
+   *   Structured manifest payload ready for JSON encoding.
    */
   protected function buildPayload(array $marker): array {
     $consistentAt = (int) ($marker['consistent_at'] ?? 0);
@@ -137,8 +140,10 @@ class SnapshotManifestWriter {
    * itself is a synthetic `snapshot` op and is not replayed.
    *
    * @param array<string, mixed> $marker
+   *   Marker row data loaded from storage.
    *
    * @return array<string, mixed>|null
+   *   Boundary metadata, or NULL when no boundary was recorded.
    */
   protected function buildJournalBoundary(array $marker): ?array {
     $key = (string) ($marker['journal_boundary_key'] ?? '');
@@ -168,7 +173,7 @@ class SnapshotManifestWriter {
   }
 
   /**
-   *
+   * Normalizes free text for safe inclusion in S3 object keys.
    */
   protected function sanitizePathPart(string $value): string {
     $value = preg_replace('/[^A-Za-z0-9._-]+/', '-', $value) ?? '';
@@ -177,7 +182,7 @@ class SnapshotManifestWriter {
   }
 
   /**
-   *
+   * Formats an epoch timestamp as UTC ISO-8601.
    */
   protected function formatIso(int $timestamp): string {
     return (new \DateTimeImmutable('@' . $timestamp))
@@ -186,7 +191,7 @@ class SnapshotManifestWriter {
   }
 
   /**
-   *
+   * Uploads a JSON manifest object with AWS SigV4 signing.
    */
   protected function putObject(string $bucket, string $key, string $body, string $contentType): void {
     [$base, $host, $canonicalUri] = $this->buildEndpoint($bucket, $key);
@@ -246,6 +251,7 @@ class SnapshotManifestWriter {
    * Build the endpoint URL and canonical URI for an S3 object key.
    *
    * @return array{0:string,1:string,2:string}
+   *   Base URL, host header value, and canonical request URI.
    */
   protected function buildEndpoint(string $bucket, string $key): array {
     $endpoint = getenv('DRX_S3_ENDPOINT') ?: '';

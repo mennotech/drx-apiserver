@@ -25,21 +25,21 @@ class SnapshotForm extends FormBase {
   ) {}
 
   /**
-   *
+   * Creates the form using container-managed services.
    */
   public static function create(ContainerInterface $container): static {
     return new static($container->get('drx_litestream.snapshot_orchestrator'));
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function getFormId(): string {
     return 'drx_litestream_snapshot_form';
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $form['warning'] = [
@@ -75,7 +75,7 @@ class SnapshotForm extends FormBase {
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $result = $this->orchestrator->createConsistent([

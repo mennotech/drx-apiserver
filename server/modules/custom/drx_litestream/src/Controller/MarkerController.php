@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\drx_litestream\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Url;
 use Drupal\drx_litestream\Service\LitestreamStatus;
 use Drupal\drx_litestream\Service\MarkerManager;
@@ -21,20 +22,22 @@ class MarkerController extends ControllerBase {
   public function __construct(
     protected MarkerManager $markers,
     protected LitestreamStatus $status,
+    protected DateFormatterInterface $dateFormatter,
   ) {}
 
   /**
-   *
+   * Creates the controller using container-managed services.
    */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('drx_litestream.markers'),
       $container->get('drx_litestream.status'),
+      $container->get('date.formatter'),
     );
   }
 
   /**
-   *
+   * Renders the marker list page.
    */
   public function listPage(): array {
     $rows = [];
@@ -109,7 +112,7 @@ class MarkerController extends ControllerBase {
   }
 
   /**
-   *
+   * Exports a single marker as downloadable JSON.
    */
   public function export(int $id): Response {
     $m = $this->markers->load($id);
@@ -127,7 +130,7 @@ class MarkerController extends ControllerBase {
   }
 
   /**
-   *
+   * Renders a single marker as formatted JSON.
    */
   public function view(int $id): array {
     $m = $this->markers->load($id);
@@ -167,6 +170,10 @@ class MarkerController extends ControllerBase {
    * Build the marker export payload shared by download + on-screen view.
    *
    * @param array<string, mixed> $m
+   *   Marker row data.
+   *
+   * @return array<string, mixed>
+   *   Export payload for the marker.
    */
   protected function buildPayload(array $m): array {
     $kind = (string) ($m['kind'] ?? 'live');
@@ -235,16 +242,14 @@ class MarkerController extends ControllerBase {
   }
 
   /**
-   *
+   * Formats a timestamp using Drupal's configured date/time preferences.
    */
   protected function formatSiteDate(int $timestamp): string {
-    /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
-    $dateFormatter = \Drupal::service('date.formatter');
-    return $dateFormatter->format($timestamp, 'medium');
+    return $this->dateFormatter->format($timestamp, 'medium');
   }
 
   /**
-   *
+   * Formats a timestamp as UTC ISO-8601.
    */
   protected function formatIsoDate(int $timestamp): string {
     return (new \DateTimeImmutable('@' . $timestamp))

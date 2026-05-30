@@ -22,7 +22,7 @@ class MarkerManager {
   ) {}
 
   /**
-   *
+   * Inserts a new marker row and returns its numeric id.
    */
   public function create(array $data): int {
     return (int) $this->db->insert('drx_litestream_marker')->fields([
@@ -56,7 +56,10 @@ class MarkerManager {
   /**
    * Update a subset of fields on an existing marker.
    *
+   * @param int $id
+   *   Marker id to update.
    * @param array<string, mixed> $fields
+   *   Column values to write.
    */
   public function update(int $id, array $fields): void {
     if (empty($fields)) {
@@ -69,7 +72,7 @@ class MarkerManager {
   }
 
   /**
-   *
+   * Loads a single marker by id.
    */
   public function load(int $id): ?array {
     $row = $this->db->select('drx_litestream_marker', 'm')
@@ -81,7 +84,10 @@ class MarkerManager {
   }
 
   /**
+   * Loads all markers ordered by capture time descending.
+   *
    * @return array<int, array<string, mixed>>
+   *   Marker rows keyed by id.
    */
   public function loadAll(): array {
     return $this->db->select('drx_litestream_marker', 'm')
@@ -92,7 +98,7 @@ class MarkerManager {
   }
 
   /**
-   *
+   * Deletes one marker by id.
    */
   public function delete(int $id): void {
     $this->db->delete('drx_litestream_marker')

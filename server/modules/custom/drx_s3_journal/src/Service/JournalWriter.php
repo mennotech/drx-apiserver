@@ -8,8 +8,7 @@ use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ClientException;
 
 /**
- * Writes a single immutable JSON object to the configured S3 bucket
- * under the `journal/` prefix using AWS SigV4.
+ * Writes one immutable JSON journal object to S3 using AWS SigV4.
  *
  * Uses direct HTTP calls instead of Drupal stream wrappers on purpose:
  * the journal must not flow through file entity or s3fs code paths,
@@ -37,8 +36,10 @@ class JournalWriter {
   }
 
   /**
-   * Synchronously write one journal object. Throws on failure so the
-   * caller's transaction fails too (strict audit).
+   * Synchronously writes one journal object.
+   *
+   * Throws on failure so the caller's transaction fails too (strict
+   * audit semantics).
    */
   public function put(string $key, string $body, string $contentType = 'application/json'): void {
     $bucket = (string) getenv('DRX_S3_BUCKET');
@@ -115,7 +116,10 @@ class JournalWriter {
   }
 
   /**
+   * Builds endpoint components for an S3 object path.
+   *
    * @return array{0:string,1:string,2:string}
+   *   Base URL, host header value, and canonical request URI.
    */
   protected function buildEndpoint(string $bucket, string $key): array {
     $endpoint = (string) getenv('DRX_S3_ENDPOINT');

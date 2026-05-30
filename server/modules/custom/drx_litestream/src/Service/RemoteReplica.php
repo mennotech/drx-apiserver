@@ -31,7 +31,7 @@ class RemoteReplica {
   ) {}
 
   /**
-   *
+   * Returns the cache TTL (seconds) for remote size snapshots.
    */
   public function ttl(): int {
     $v = getenv('DRX_LITESTREAM_REMOTE_SIZE_TTL');
@@ -113,6 +113,7 @@ class RemoteReplica {
    * Walk the configured prefix and tally bytes + objects.
    *
    * @return array{bytes:int, objects:int}
+   *   Total bytes and object count under the litestream replica prefix.
    */
   protected function computeRemoteSize(string $replicaUrl): array {
     $parts = parse_url($replicaUrl);
@@ -232,7 +233,7 @@ class RemoteReplica {
   }
 
   /**
-   *
+   * Builds a canonical query string for AWS SigV4 signing.
    */
   protected function canonicalQuery(array $query): string {
     ksort($query);

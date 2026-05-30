@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\drx_litestream\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Url;
 use Drupal\drx_litestream\Service\LitestreamStatus;
 use Drupal\drx_litestream\Service\RemoteReplica;
@@ -19,20 +20,22 @@ class HealthController extends ControllerBase {
   public function __construct(
     protected LitestreamStatus $status,
     protected RemoteReplica $remote,
+    protected DateFormatterInterface $dateFormatter,
   ) {}
 
   /**
-   *
+   * Creates the controller using container-managed services.
    */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('drx_litestream.status'),
       $container->get('drx_litestream.remote_replica'),
+      $container->get('date.formatter'),
     );
   }
 
   /**
-   *
+   * Builds the replication health overview page.
    */
   public function overview(): array {
     $build = ['#cache' => ['max-age' => 0]];
@@ -149,7 +152,7 @@ class HealthController extends ControllerBase {
   }
 
   /**
-   *
+   * Formats remote backup size text for display.
    */
   protected function formatRemoteSize(array $remote): string {
     if (empty($remote['available'])) {
@@ -159,7 +162,7 @@ class HealthController extends ControllerBase {
   }
 
   /**
-   *
+   * Formats remote object count text for display.
    */
   protected function formatRemoteObjects(array $remote): string {
     if (empty($remote['available'])) {
@@ -169,7 +172,7 @@ class HealthController extends ControllerBase {
   }
 
   /**
-   *
+   * Formats the remote size computation timestamp for display.
    */
   protected function formatComputedAt(array $remote): string {
     if (empty($remote['computed_at'])) {
@@ -186,13 +189,11 @@ class HealthController extends ControllerBase {
    * Format a timestamp using Drupal's configured date/time preferences.
    */
   protected function formatSiteDate(int $timestamp): string {
-    /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
-    $dateFormatter = \Drupal::service('date.formatter');
-    return $dateFormatter->format($timestamp, 'medium');
+    return $this->dateFormatter->format($timestamp, 'medium');
   }
 
   /**
-   *
+   * Formats bytes into a human-readable size string.
    */
   protected function humanBytes(int $bytes): string {
     $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];

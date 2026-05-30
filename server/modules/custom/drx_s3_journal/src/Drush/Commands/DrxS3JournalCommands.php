@@ -26,7 +26,7 @@ class DrxS3JournalCommands extends DrushCommands {
   }
 
   /**
-   *
+   * Creates command handlers from Drupal's service container.
    */
   public static function create(ContainerInterface $container): self {
     return new self($container->get('drx_s3_journal.journal'));
@@ -57,8 +57,9 @@ class DrxS3JournalCommands extends DrushCommands {
   }
 
   /**
-   * Emit a synthetic event to verify S3 reachability + credentials +
-   * bucket policy. Returns non-zero if the write fails.
+   * Emits a synthetic event to verify S3 reachability and credentials.
+   *
+   * Returns non-zero if the write fails.
    */
   #[CLI\Command(name: 'drx:s3-journal:test', aliases: ['drx-s3j-test'])]
   public function test(): int {
