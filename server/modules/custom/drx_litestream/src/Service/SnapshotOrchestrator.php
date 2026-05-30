@@ -96,7 +96,7 @@ class SnapshotOrchestrator {
    *   state:string,
    *   db_txid?:string,
    *   consistent_at?:int,
-  *   manifest_key?:string,
+   *   manifest_key?:string,
    *   error?:string,
    * }
    *
