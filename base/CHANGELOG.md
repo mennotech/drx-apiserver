@@ -10,7 +10,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- New Drush commands in `drx_litestream`: `drx:litestream:status`,
+  `drx:litestream:info`, `drx:litestream:sync`, `drx:litestream:markers`,
+  `drx:litestream:marker-show`, and `drx:litestream:marker-delete` for
+  inspecting replication health, the runtime contract, and snapshot
+  markers from the CLI (in addition to the existing
+  `drx:litestream:snapshot`).
+- New Drush commands in `drx_s3_journal`: `drx:s3-journal:status` and
+  `drx:s3-journal:key-preview` for inspecting the journal pipeline and
+  previewing object keys without writing to S3 (alongside the existing
+  `drx:s3-journal:prefix` and `drx:s3-journal:test`).
+- `Drupal\drx_s3_journal\Service\Journal::getJournalPrefix()` and
+  `previewKey()` helpers to support the new commands without
+  duplicating prefix/key construction logic.
+
 ### Fixed
+- `Drupal\drx_litestream\Service\LitestreamStatus::isEnabled()` and
+  `getReplicaUrl()` now derive from the shared `DRX_S3_*` contract
+  when the bootstrap-internal `DRX_LITESTREAM_*` env vars are not
+  visible (e.g. when Drush is invoked via `docker exec`, which
+  receives the container-spec env rather than the runtime env exported
+  by `init.sh`).
+- `LitestreamStatus::getLocalStatus()` and `getReplicaLatestTxid()`
+  now wrap their `litestream status` / `litestream ltx` shell-outs in
+  a 10-second `timeout` so the admin dashboard and the new
+  `drx:litestream:status` Drush command never block on a slow or empty
+  replica.
+- `LitestreamStatus::forceReplicaSync()` now passes `-timeout` as an
+  integer number of seconds (the format `litestream sync` expects)
+  instead of a duration string, fixing the `parse error` that
+  prevented both `drx:litestream:sync` and the snapshot orchestrator's
+  replica-flush step from succeeding.
 - SigV4 canonical request construction in `drx_litestream`
   (`RemoteReplica`, `SnapshotManifestWriter`) and `drx_s3_journal`
   (`JournalWriter`) now inserts the required newline between

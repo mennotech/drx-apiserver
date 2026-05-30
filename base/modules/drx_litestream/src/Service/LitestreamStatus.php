@@ -23,9 +23,25 @@ class LitestreamStatus {
 
   /**
    * Returns whether litestream is enabled for this runtime.
+   *
+   * Honours the explicit `DRX_LITESTREAM_ENABLED=1` set by bootstrap
+   * for the apache process tree, and otherwise mirrors the same
+   * derivation from the shared S3 contract (see
+   * `base/lib/s3.sh::drx::s3::bridge_litestream`). The fallback path
+   * matters when Drush is invoked via `docker exec`, which receives
+   * the container-spec env rather than the runtime env exported by
+   * `init.sh`.
    */
   public function isEnabled(): bool {
-    return getenv('DRX_LITESTREAM_ENABLED') === '1';
+    if (getenv('DRX_LITESTREAM_ENABLED') === '1') {
+      return TRUE;
+    }
+    if ((string) getenv('DRX_S3_REQUIRED') === '0') {
+      return FALSE;
+    }
+    return (string) getenv('DRX_S3_BUCKET') !== ''
+      && (string) getenv('DRX_S3_ACCESS_KEY_ID') !== ''
+      && (string) getenv('DRX_S3_SECRET_ACCESS_KEY') !== '';
   }
 
   /**
@@ -45,10 +61,23 @@ class LitestreamStatus {
 
   /**
    * Returns the replica URL, or NULL when not configured.
+   *
+   * Falls back to the shared-S3-contract derivation
+   * (`s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`) when the
+   * explicit env var is absent, matching what bootstrap exports for
+   * litestream itself.
    */
   public function getReplicaUrl(): ?string {
     $v = getenv('DRX_LITESTREAM_REPLICA_URL');
-    return $v !== FALSE && $v !== '' ? $v : NULL;
+    if ($v !== FALSE && $v !== '') {
+      return $v;
+    }
+    $bucket = (string) getenv('DRX_S3_BUCKET');
+    if ($bucket === '') {
+      return NULL;
+    }
+    $prefix = trim((string) (getenv('DRX_S3_PREFIX_LITESTREAM') ?: 'litestream'), '/');
+    return 's3://' . $bucket . '/' . $prefix;
   }
 
   /**
@@ -101,7 +130,9 @@ class LitestreamStatus {
     $db = escapeshellarg($this->getDatabasePath());
     $sock = escapeshellarg($socket);
     $to = (int) max(1, $timeoutSeconds);
-    $timeout = escapeshellarg($to . 's');
+    // `litestream sync -timeout` expects an integer number of seconds,
+    // not a duration string ("30s" is rejected as a parse error).
+    $timeout = escapeshellarg((string) $to);
     $out = [];
     $rc = 0;
     @exec("$bin sync -socket $sock -wait -timeout $timeout $db 2>&1", $out, $rc);
@@ -138,7 +169,7 @@ class LitestreamStatus {
     $cfg = escapeshellarg($this->getConfigPath());
     $out = [];
     $rc = 0;
-    @exec("$bin status -config $cfg 2>&1", $out, $rc);
+    @exec("timeout 10 $bin status -config $cfg 2>&1", $out, $rc);
     if ($rc !== 0) {
       return ['status' => 'error', 'error' => implode("\n", $out)];
     }
@@ -184,7 +215,10 @@ class LitestreamStatus {
     $db = escapeshellarg($this->getDatabasePath());
     $out = [];
     $rc = 0;
-    @exec("$bin ltx -config $cfg -level all $db 2>&1", $out, $rc);
+    // `litestream ltx` reads the replica directly and can block
+    // indefinitely on a slow or empty remote; cap it so the caller
+    // (status, dashboard, CLI) never hangs.
+    @exec("timeout 10 $bin ltx -config $cfg -level all $db 2>&1", $out, $rc);
     if ($rc !== 0) {
       return NULL;
     }

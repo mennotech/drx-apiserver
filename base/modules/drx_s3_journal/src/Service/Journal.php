@@ -161,6 +161,26 @@ class Journal {
   }
 
   /**
+   * Returns the configured journal prefix (without trailing slash).
+   */
+  public function getJournalPrefix(): string {
+    return $this->journalPrefix();
+  }
+
+  /**
+   * Compute the journal key that would be written for the given event.
+   *
+   * Side-effect free: does not call the writer. Operators use this to
+   * inspect the canonical key layout while debugging.
+   */
+  public function previewKey(int $unixTimestamp, string $op, string $stream, int $fid): string {
+    $iso = (new \DateTimeImmutable('@' . $unixTimestamp))
+      ->setTimezone(new \DateTimeZone('UTC'))
+      ->format('Y-m-d\TH:i:s.u\Z');
+    return $this->buildKey($iso, $this->uuidService->generate(), $op, $stream, $fid);
+  }
+
+  /**
    * Builds the canonical journal payload for a file event.
    *
    * @return array<string,mixed>

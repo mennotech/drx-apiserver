@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Drupal\drx_s3_journal\Drush\Commands;
 
+use Consolidation\OutputFormatters\StructuredData\PropertyList;
 use Drupal\drx_s3_journal\Service\Journal;
+use Drupal\drx_s3_journal\Service\JournalWriter;
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -14,13 +16,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * Replay itself is intentionally delegated to the operator's S3 client
  * (`aws s3 ls`, `mc ls`, etc.) — the module's contract is the
- * lexicographically-sortable key layout. These commands just expose the
+ * lexicographically-sortable key layout. These commands expose the
  * computed prefix and let operators smoke-test the pipeline end-to-end.
  */
 class DrxS3JournalCommands extends DrushCommands {
 
   public function __construct(
     protected Journal $journal,
+    protected JournalWriter $writer,
   ) {
     parent::__construct();
   }
@@ -29,7 +32,10 @@ class DrxS3JournalCommands extends DrushCommands {
    * Creates command handlers from Drupal's service container.
    */
   public static function create(ContainerInterface $container): self {
-    return new self($container->get('drx_s3_journal.journal'));
+    return new self(
+      $container->get('drx_s3_journal.journal'),
+      $container->get('drx_s3_journal.writer'),
+    );
   }
 
   /**
@@ -71,6 +77,62 @@ class DrxS3JournalCommands extends DrushCommands {
       return self::EXIT_FAILURE;
     }
     $this->output()->writeln('ok ' . $result['key']);
+    return self::EXIT_SUCCESS;
+  }
+
+  /**
+   * Show drx_s3_journal runtime configuration.
+   */
+  #[CLI\Command(name: 'drx:s3-journal:status', aliases: ['drx-s3j-status'])]
+  #[CLI\FieldLabels(labels: [
+    'enabled' => 'Enabled',
+    'bucket' => 'Bucket',
+    'region' => 'Region',
+    'endpoint' => 'Endpoint',
+    'prefix' => 'Journal prefix',
+    'sample_key' => 'Sample key',
+  ])]
+  public function status(array $options = ['format' => 'table']): PropertyList {
+    return new PropertyList([
+      'enabled' => $this->writer->isEnabled() ? 'yes' : 'no',
+      'bucket' => (string) (getenv('DRX_S3_BUCKET') ?: '—'),
+      'region' => (string) (getenv('DRX_S3_REGION') ?: 'us-east-1'),
+      'endpoint' => (string) (getenv('DRX_S3_ENDPOINT') ?: '—'),
+      'prefix' => $this->journal->getJournalPrefix(),
+      'sample_key' => $this->journal->previewKey(time(), 'preview', 'public', 0),
+    ]);
+  }
+
+  /**
+   * Preview the journal key that would be written for an event.
+   *
+   * Side-effect free: does not write to S3. Useful when debugging
+   * downstream consumers that key off the layout.
+   */
+  #[CLI\Command(name: 'drx:s3-journal:key-preview', aliases: ['drx-s3j-key'])]
+  #[CLI\Option(name: 'op', description: 'Event op (e.g. create, update, delete, snapshot, test).')]
+  #[CLI\Option(name: 'stream', description: 'Stream wrapper scope (public, private, meta).')]
+  #[CLI\Option(name: 'fid', description: 'File id to embed in the key (default 0).')]
+  #[CLI\Option(name: 'at', description: 'Timestamp expression (default now).')]
+  public function keyPreview(
+    array $options = [
+      'op' => 'update',
+      'stream' => 'public',
+      'fid' => 0,
+      'at' => 'now',
+    ],
+  ): int {
+    $at = strtotime((string) ($options['at'] ?? 'now'));
+    if ($at === FALSE) {
+      $this->logger()->error('Could not parse --at value');
+      return self::EXIT_FAILURE;
+    }
+    $this->output()->writeln($this->journal->previewKey(
+      $at,
+      (string) ($options['op'] ?? 'update'),
+      (string) ($options['stream'] ?? 'public'),
+      (int) ($options['fid'] ?? 0),
+    ));
     return self::EXIT_SUCCESS;
   }
 
