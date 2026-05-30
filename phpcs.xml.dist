@@ -14,5 +14,5 @@
   <exclude-pattern>base/web/modules/contrib/*</exclude-pattern>
   <exclude-pattern>base/web/themes/contrib/*</exclude-pattern>
 
-  <file>server/modules/custom</file>
+  <file>server/modules/contrib</file>
 </ruleset>

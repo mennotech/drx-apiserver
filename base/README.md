@@ -328,7 +328,7 @@ ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
 # Custom modules.
-COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/custom/
+COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/base/
 
 # Project config sync payload.
 COPY --chown=www-data:www-data config/    /var/www/html/config/

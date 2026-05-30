@@ -38,7 +38,7 @@ versioned — entries are grouped by the date of the corresponding
 - Adopted Drupal coding standards for custom app code by adding
   [phpcs.xml.dist](phpcs.xml.dist) (Drupal + DrupalPractice rules) and a
   containerized [Makefile](Makefile) `make lint-drupal` target that runs
-  PHPCS against [server/modules/custom](server/modules/custom) without
+  PHPCS against [server/modules/contrib](server/modules/contrib) without
   requiring host PHP/Composer tooling; added
   [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
   to enforce the same check on push and pull request changes.

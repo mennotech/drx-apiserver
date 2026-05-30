@@ -11,8 +11,8 @@
 # `make smoke`  — boot the base image and hit its healthcheck
 # `make smoke-stack` — boot the full compose stack (app + MinIO) and assert
 #                     the seeded JSON:API endpoint returns the expected notes
-# `make lint-drupal` — run Drupal + DrupalPractice coding standards on custom
-#                       module code in server/modules/custom
+# `make lint-drupal` — run Drupal + DrupalPractice coding standards on contrib
+#                       module code in server/modules/contrib
 # `make lint-drupal-fix` — auto-fix Drupal coding standards where possible
 # `make lint-shell` — run tiered ShellCheck policy (core + hooks)
 # `make lint-shell-core` — strict ShellCheck profile for CI/bootstrap scripts
@@ -156,7 +156,7 @@ lint-drupal:
 			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
 			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
 			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
-			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/server/modules/custom'
+			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/server/modules/contrib'
 
 lint-drupal-fix:
 	@mkdir -p "$${HOME}/.cache/composer"
@@ -170,7 +170,7 @@ lint-drupal-fix:
 			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
 			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
 			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
-			./vendor/bin/phpcbf --standard=/work/phpcs.xml.dist /work/server/modules/custom; \
+			./vendor/bin/phpcbf --standard=/work/phpcs.xml.dist /work/server/modules/contrib; \
 			rc=$$?; [ $$rc -eq 0 ] || [ $$rc -eq 1 ]'
 
 # Tiered shell lint policy:

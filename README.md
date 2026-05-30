@@ -45,8 +45,8 @@ Pin to an immutable tag in production:
 ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
-# Custom modules, config sync payload, lifecycle hooks.
-COPY --chown=www-data:www-data modules/ /var/www/html/web/modules/custom/
+# Contrib modules, config sync payload, lifecycle hooks.
+COPY --chown=www-data:www-data modules/contrib/ /var/www/html/web/modules/contrib/
 COPY --chown=www-data:www-data config/  /var/www/html/config/
 COPY --chmod=0755 hooks/                /etc/drx/hooks/
 ```
@@ -83,7 +83,7 @@ Local orchestration is via [Makefile](Makefile):
 | `make smoke-stack` | Boot the full compose stack (app + MinIO), wait for healthcheck, and assert the seeded JSON:API endpoint returns the expected notes. Recommended pre-push check for changes under [server/](server/) or the bootstrap pipeline. |
 | `make scan` | Run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed). |
 | `make verify` | `make smoke` + `make scan`; the minimum check before `git push` for `base/` changes. |
-| `make lint-drupal` | Run Drupal coding standards (Drupal + DrupalPractice) for custom module code under [server/modules/custom](server/modules/custom). |
+| `make lint-drupal` | Run Drupal coding standards (Drupal + DrupalPractice) for contrib module code under [server/modules/contrib](server/modules/contrib). |
 | `make lint-shell` | Run tiered ShellCheck policy (core + hooks). |
 | `make lint-shell-core` | Run strict ShellCheck profile for core scripts in [.github/scripts](.github/scripts) and [base](base). |
 | `make lint-shell-hooks` | Run hook profile for lifecycle scripts in [server/hooks](server/hooks). |
@@ -167,7 +167,7 @@ overridable variables.
      [base](base), or [server/hooks](server/hooks). Shell policy is
      documented in [SHELL_POLICY.md](SHELL_POLICY.md).
    - `make lint-drupal` whenever you touch PHP under
-     [server/modules/custom](server/modules/custom). Use
+    [server/modules/contrib](server/modules/contrib). Use
      `make lint-drupal-fix` to auto-correct fixable findings.
    - `make smoke` whenever you touch anything under [base/](base/) or
      the bootstrap library.
