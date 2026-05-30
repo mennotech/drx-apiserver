@@ -34,6 +34,8 @@ drx::install::_db_url() {
 }
 
 drx::install::ensure() {
+    # shellcheck disable=SC2034
+    # This flag is consumed by other sourced drx:: functions (e.g. timezone).
     DRX_INSTALL_WAS_FRESH=0
 
     if drx::install::_db_ready; then
@@ -61,5 +63,6 @@ drx::install::ensure() {
         --site-name="${DRUPAL_SITE_NAME}" \
         --yes
 
+    # shellcheck disable=SC2034
     DRX_INSTALL_WAS_FRESH=1
 }

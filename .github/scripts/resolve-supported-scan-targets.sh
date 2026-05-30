@@ -9,6 +9,10 @@ for var_name in "${required_vars[@]}"; do
   fi
 done
 
+# shellcheck disable=SC2153
+# IMAGE_REF is a required environment input validated above.
+base_image_ref="${IMAGE_REF}"
+
 api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100"
 releases_json=$(curl -fsSL \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
@@ -72,7 +76,7 @@ while IFS= read -r row; do
   line=$(jq -r '.line' <<< "$row")
   image_tag=$(jq -r '.image_tag' <<< "$row")
   release_tag=$(jq -r '.release_tag' <<< "$row")
-  image_ref="${IMAGE_REF}:${image_tag}"
+  image_ref="${base_image_ref}:${image_tag}"
 
   inspect_output=""
   if ! inspect_output=$(docker buildx imagetools inspect "$image_ref" 2>&1); then
@@ -141,7 +145,7 @@ if [[ "$(jq 'length' <<< "$resolved")" -eq 0 ]]; then
   exit 1
 fi
 
-matrix=$(jq -c --arg image "$IMAGE_REF" '
+matrix=$(jq -c --arg image "$base_image_ref" '
   sort_by(.digest)
   | group_by(.digest)
   | map({
@@ -163,7 +167,7 @@ fi
 generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 jq -n \
   --arg mode "$mode" \
-  --arg image "$IMAGE_REF" \
+  --arg image "$base_image_ref" \
   --arg generated_at "$generated_at" \
   --argjson selected "$selected" \
   --argjson resolved "$resolved" \
@@ -188,7 +192,7 @@ jq -n \
   echo "### Supported image scan targets"
   echo ""
   echo "- Selection mode: $mode"
-  echo "- Image: $IMAGE_REF"
+  echo "- Image: $base_image_ref"
   echo ""
   echo "| support line | image tag | digest |"
   echo "| --- | --- | --- |"
