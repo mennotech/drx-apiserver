@@ -270,8 +270,10 @@ deployment platform.
 
 The base image only provides the runtime contract. Operator-facing UI
 (replication health dashboard, point-in-time marker capture and export)
-lives in a downstream module — see the reference implementation in
-[server/modules/contrib/drx_litestream](../server/modules/contrib/drx_litestream).
+lives in the first-party `drx_litestream` module that ships with the
+image at
+[base/modules/drx_litestream](modules/drx_litestream); the reference
+overlay enables it via [server/hooks/post-modules.d/30-enable-drx-litestream.sh](../server/hooks/post-modules.d/30-enable-drx-litestream.sh).
 
 ---
 
@@ -327,8 +329,11 @@ A non-zero exit from a hook aborts bootstrap.
 ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
-# Custom modules.
-COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/base/
+# Project custom modules. The base image owns web/modules/base/ for its
+# first-party modules (drx_litestream, drx_s3_journal); downstream
+# projects should use web/modules/custom/ (or web/modules/contrib/ for
+# unmodified contrib drop-ins) to keep the namespaces separate.
+COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/custom/
 
 # Project config sync payload.
 COPY --chown=www-data:www-data config/    /var/www/html/config/

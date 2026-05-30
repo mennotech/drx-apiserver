@@ -30,6 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Corrected the `base/lib/s3.sh` header comment to reflect that s3fs
   fronts both `public://` and `private://` stream wrappers, not only
   private files.
+- Documentation in `base/README.md` and `base/Dockerfile` updated to
+  reflect that the base image now ships first-party Drupal modules
+  (`drx_litestream`, `drx_s3_journal`) at `/var/www/html/web/modules/base/`,
+  and the downstream "Extending the image" example now copies project
+  modules into `/var/www/html/web/modules/custom/` to avoid colliding
+  with the base-owned path.
 
 ## [0.0.5-rc5] - 2026-05-29
 

@@ -26,6 +26,19 @@ versioned — entries are grouped by the date of the corresponding
 - [base/.gitattributes](base/.gitattributes) no longer classifies
   `*.sh` as PHP for GitHub Linguist / diff highlighting; shell scripts
   are tagged `diff=bash linguist-language=shell`.
+- `make lint-drupal` ([Makefile](Makefile)) and
+  [phpcs.xml.dist](phpcs.xml.dist) now lint
+  [base/modules](base/modules) (where `drx_litestream` and
+  `drx_s3_journal` live after the recent move) in addition to
+  [server/modules](server/modules); the previous configuration
+  pointed at the now-empty `server/modules/contrib/` and was a no-op.
+  [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  trigger paths and [AGENTS.md](AGENTS.md) `make lint-drupal`
+  guidance were updated to match.
+- [server/README.md](server/README.md) Litestream admin-UI section now
+  links to the first-party module under
+  [base/modules/drx_litestream/](base/modules/drx_litestream/) instead
+  of the removed `server/modules/contrib/drx_litestream/` path.
 
 ### Changed
 

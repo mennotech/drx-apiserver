@@ -156,7 +156,7 @@ lint-drupal:
 			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
 			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
 			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
-			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/server/modules/contrib'
+			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/base/modules /work/server/modules'
 
 lint-drupal-fix:
 	@mkdir -p "$${HOME}/.cache/composer"
@@ -170,7 +170,7 @@ lint-drupal-fix:
 			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
 			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
 			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
-			./vendor/bin/phpcbf --standard=/work/phpcs.xml.dist /work/server/modules/contrib; \
+			./vendor/bin/phpcbf --standard=/work/phpcs.xml.dist /work/base/modules /work/server/modules; \
 			rc=$$?; [ $$rc -eq 0 ] || [ $$rc -eq 1 ]'
 
 # Tiered shell lint policy:

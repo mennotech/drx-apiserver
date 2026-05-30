@@ -64,8 +64,10 @@ Local commands (see [Makefile](Makefile)):
   change under [server/](server/) or the bootstrap pipeline (compose,
   hooks, overlay modules, seeded config).
 - `make lint-drupal` — run Drupal + DrupalPractice coding standards
-  against [server/modules/contrib](server/modules/contrib). Use
-  `make lint-drupal-fix` to auto-correct fixable findings.
+  against [base/modules](base/modules) (first-party Drupal modules
+  shipped with the image) and [server/modules](server/modules)
+  (reference-overlay modules). Use `make lint-drupal-fix` to
+  auto-correct fixable findings.
 - `make lint-shell` — run the tiered ShellCheck policy (core + hooks)
   defined in [SHELL_POLICY.md](SHELL_POLICY.md).
 - `make lint-shell-docs` — enforce the shell documentation policy
@@ -87,7 +89,7 @@ Before opening a PR:
   any shell script under [.github/scripts](.github/scripts), [base](base),
   or [server/hooks](server/hooks).
 - Run `make lint-drupal` whenever you touch PHP under
-  [server/modules/contrib](server/modules/contrib).
+  [base/modules](base/modules) or [server/modules](server/modules).
 - Run `make smoke` whenever you touch anything under [base/](base/) or
   the bootstrap library, and confirm it reports `ok after Ns`.
 - Run `make smoke-stack` whenever you touch anything under
@@ -143,7 +145,7 @@ A useful default workflow for an agent:
      shell scripts under [.github/scripts](.github/scripts), [base](base),
      or [server/hooks](server/hooks).
    - `make lint-drupal` for any change to PHP under
-    [server/modules/contrib](server/modules/contrib).
+    [base/modules](base/modules) or [server/modules](server/modules).
 6. Do not bump version numbers, create git tags, or draft GitHub
    Releases. Releases are a maintainer action; see
    [RELEASES.md → Release procedure](RELEASES.md#release-procedure-maintainers).

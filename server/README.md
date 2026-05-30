@@ -174,8 +174,9 @@ and `make up-base`).
 
 ## Litestream replication: admin UI and dev restore
 
-The reference overlay enables the `drx_litestream` contrib module (see
-[`modules/contrib/drx_litestream/`](modules/contrib/drx_litestream/)),
+The reference overlay enables the first-party `drx_litestream` module
+that ships with the base image (see
+[`base/modules/drx_litestream/`](../base/modules/drx_litestream/)),
 which surfaces the base image's litestream integration to operators
 without requiring shell access to the container. Local credentials and
 endpoint come from the shared MinIO sidecar documented above, so the

@@ -3,15 +3,15 @@ name: drupal-coding-standards
 on:
   push:
     paths:
+      - 'base/modules/**'
       - 'server/modules/**'
-      - 'base/modules/contrib/**'
       - 'phpcs.xml.dist'
       - 'Makefile'
       - '.github/workflows/drupal-coding-standards.yml'
   pull_request:
     paths:
+      - 'base/modules/**'
       - 'server/modules/**'
-      - 'base/modules/contrib/**'
       - 'phpcs.xml.dist'
       - 'Makefile'
       - '.github/workflows/drupal-coding-standards.yml'

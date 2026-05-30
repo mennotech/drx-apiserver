@@ -4,7 +4,9 @@
 # Reusable, production-oriented Drupal 10 base image.
 #
 # Downstream images extend this base by:
-#   - copying base modules into  /var/www/html/web/modules/base/
+#   - copying project custom modules into /var/www/html/web/modules/custom/
+#     (the base image owns web/modules/base/ for its own first-party
+#     modules such as drx_litestream and drx_s3_journal)
 #   - copying configuration into   /var/www/html/config/sync/
 #   - dropping init hooks into     /etc/drx/hooks/<phase>.d/
 #   - setting environment variables documented in README.md
