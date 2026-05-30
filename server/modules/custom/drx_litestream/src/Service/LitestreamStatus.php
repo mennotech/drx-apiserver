@@ -21,24 +21,39 @@ class LitestreamStatus {
     protected LoggerChannelFactoryInterface $loggerFactory,
   ) {}
 
+  /**
+   *
+   */
   public function isEnabled(): bool {
     return getenv('DRX_LITESTREAM_ENABLED') === '1';
   }
 
+  /**
+   *
+   */
   public function getBinary(): string {
     return '/usr/local/bin/litestream';
   }
 
+  /**
+   *
+   */
   public function getConfigPath(): string {
     $v = getenv('DRX_LITESTREAM_CONFIG_FILE');
     return $v !== FALSE && $v !== '' ? $v : '/etc/litestream.yml';
   }
 
+  /**
+   *
+   */
   public function getReplicaUrl(): ?string {
     $v = getenv('DRX_LITESTREAM_REPLICA_URL');
     return $v !== FALSE && $v !== '' ? $v : NULL;
   }
 
+  /**
+   *
+   */
   public function getDatabasePath(): string {
     $v = getenv('DRUPAL_SQLITE_PATH');
     return $v !== FALSE && $v !== '' ? $v : '/var/drupal-db/db.sqlite';
@@ -197,7 +212,7 @@ class LitestreamStatus {
    *   description: string,
    *   snapshot_interval?: string,
    *   snapshot_retention?: string,
-   * }
+   *   }
    */
   public function getRetentionInfo(): array {
     $path = $this->getConfigPath();
@@ -284,7 +299,7 @@ class LitestreamStatus {
    *   wal_size:string,
    *   replica_url:string,
    *   issues:array<int,string>,
-   * }
+   *   }
    */
   public function getHealthSnapshot(): array {
     $local = $this->getLocalStatus();
@@ -369,6 +384,9 @@ class LitestreamStatus {
     return $value;
   }
 
+  /**
+   *
+   */
   protected function isSensitiveKey(string $key): bool {
     $k = strtolower($key);
     return str_contains($k, 'password')

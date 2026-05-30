@@ -229,6 +229,9 @@ class Journal {
     return $out;
   }
 
+  /**
+   *
+   */
   protected function scopeFromUri(string $uri): ?string {
     $pos = strpos($uri, '://');
     if ($pos === FALSE) {
@@ -241,7 +244,7 @@ class Journal {
   /**
    * Build the S3 object key.
    *
-   * Layout: <DRX_S3_PREFIX_JOURNAL>/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json
+   * Layout: <DRX_S3_PREFIX_JOURNAL>/YYYY/MM/DD/HH/<TS>_<eventId>_<op>_<scope>_<fid>.json.
    *
    * The hourly partition is the lexicographic anchor for "replay from
    * point in time": listing the bucket from this prefix forward yields
@@ -269,17 +272,26 @@ class Journal {
     );
   }
 
+  /**
+   *
+   */
   protected function journalPrefix(): string {
     $prefix = (string) (getenv('DRX_S3_PREFIX_JOURNAL') ?: 'journal/v1');
     $prefix = trim($prefix, '/');
     return $prefix !== '' ? $prefix : 'journal/v1';
   }
 
+  /**
+   *
+   */
   protected function sanitize(string $value): string {
     $value = preg_replace('/[^A-Za-z0-9._-]+/', '-', $value) ?? '';
     return trim($value, '-._') ?: 'na';
   }
 
+  /**
+   *
+   */
   protected function nowMicroIso(): string {
     // Microsecond precision UTC ISO-8601, e.g. 2026-05-29T14:35:01.123456Z.
     $now = \DateTimeImmutable::createFromFormat(
@@ -292,6 +304,9 @@ class Journal {
     return $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
   }
 
+  /**
+   *
+   */
   protected function getRequestId(): string {
     if ($this->requestId === NULL) {
       $this->requestId = $this->uuidService->generate();

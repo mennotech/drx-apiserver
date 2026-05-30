@@ -44,11 +44,13 @@ class DrxLitestreamCommands extends DrushCommands {
   #[CLI\Option(name: 'description', description: 'Optional longer description.')]
   #[CLI\Option(name: 'notes', description: 'Optional restore notes.')]
   #[CLI\Usage(name: 'drush drx:litestream:snapshot --label=pre-upgrade-2026-05-28', description: 'Capture a snapshot before a risky deploy.')]
-  public function snapshot(array $options = [
-    'label' => self::REQ,
-    'description' => '',
-    'notes' => '',
-  ]): int {
+  public function snapshot(
+    array $options = [
+      'label' => self::REQ,
+      'description' => '',
+      'notes' => '',
+    ],
+  ): int {
     $label = trim((string) ($options['label'] ?? ''));
     if ($label === '') {
       $this->logger()->error('--label is required');

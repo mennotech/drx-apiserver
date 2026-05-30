@@ -30,6 +30,9 @@ class RemoteReplica {
     protected TimeInterface $time,
   ) {}
 
+  /**
+   *
+   */
   public function ttl(): int {
     $v = getenv('DRX_LITESTREAM_REMOTE_SIZE_TTL');
     return ($v !== FALSE && (int) $v > 0) ? (int) $v : 900;
@@ -46,7 +49,7 @@ class RemoteReplica {
    *   cached?: bool,
    *   ttl: int,
    *   error?: string,
-   * }
+   *   }
    */
   public function getRemoteSize(bool $refresh = FALSE): array {
     if (!$this->status->isEnabled()) {
@@ -228,6 +231,9 @@ class RemoteReplica {
     return ['bytes' => $bytes, 'objects' => $objects];
   }
 
+  /**
+   *
+   */
   protected function canonicalQuery(array $query): string {
     ksort($query);
     $parts = [];

@@ -23,6 +23,9 @@ class MarkerController extends ControllerBase {
     protected LitestreamStatus $status,
   ) {}
 
+  /**
+   *
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('drx_litestream.markers'),
@@ -30,6 +33,9 @@ class MarkerController extends ControllerBase {
     );
   }
 
+  /**
+   *
+   */
   public function listPage(): array {
     $rows = [];
     foreach ($this->markers->loadAll() as $m) {
@@ -102,6 +108,9 @@ class MarkerController extends ControllerBase {
     ];
   }
 
+  /**
+   *
+   */
   public function export(int $id): Response {
     $m = $this->markers->load($id);
     if (!$m) {
@@ -117,6 +126,9 @@ class MarkerController extends ControllerBase {
     return $resp;
   }
 
+  /**
+   *
+   */
   public function view(int $id): array {
     $m = $this->markers->load($id);
     if (!$m) {
@@ -222,12 +234,18 @@ class MarkerController extends ControllerBase {
     return $payload;
   }
 
+  /**
+   *
+   */
   protected function formatSiteDate(int $timestamp): string {
     /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
     $dateFormatter = \Drupal::service('date.formatter');
     return $dateFormatter->format($timestamp, 'medium');
   }
 
+  /**
+   *
+   */
   protected function formatIsoDate(int $timestamp): string {
     return (new \DateTimeImmutable('@' . $timestamp))
       ->setTimezone(new \DateTimeZone('UTC'))

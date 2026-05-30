@@ -24,14 +24,23 @@ class SnapshotForm extends FormBase {
     protected SnapshotOrchestrator $orchestrator,
   ) {}
 
+  /**
+   *
+   */
   public static function create(ContainerInterface $container): static {
     return new static($container->get('drx_litestream.snapshot_orchestrator'));
   }
 
+  /**
+   *
+   */
   public function getFormId(): string {
     return 'drx_litestream_snapshot_form';
   }
 
+  /**
+   *
+   */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $form['warning'] = [
       '#markup' => $this->t('<strong>This will briefly put the site into maintenance mode</strong> while the WAL is checkpointed and the replica catches up. Typical duration: a few seconds. Cron is blocked for the duration.'),
@@ -65,6 +74,9 @@ class SnapshotForm extends FormBase {
     return $form;
   }
 
+  /**
+   *
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $result = $this->orchestrator->createConsistent([
       'label' => (string) $form_state->getValue('label'),

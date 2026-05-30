@@ -69,6 +69,7 @@ class SnapshotManifestWriter {
    * Build the human-browsable manifest payload.
    *
    * @param array<string, mixed> $marker
+   *
    * @return array<string, mixed>
    */
   protected function buildPayload(array $marker): array {
@@ -136,6 +137,7 @@ class SnapshotManifestWriter {
    * itself is a synthetic `snapshot` op and is not replayed.
    *
    * @param array<string, mixed> $marker
+   *
    * @return array<string, mixed>|null
    */
   protected function buildJournalBoundary(array $marker): ?array {
@@ -165,18 +167,27 @@ class SnapshotManifestWriter {
     return sprintf('%s/%s-%s-%d-%s.json', $snapshotPrefix, $timestamp, $label, $id, $txid);
   }
 
+  /**
+   *
+   */
   protected function sanitizePathPart(string $value): string {
     $value = preg_replace('/[^A-Za-z0-9._-]+/', '-', $value) ?? '';
     $value = trim($value, '-._');
     return $value !== '' ? $value : 'snapshot';
   }
 
+  /**
+   *
+   */
   protected function formatIso(int $timestamp): string {
     return (new \DateTimeImmutable('@' . $timestamp))
       ->setTimezone(new \DateTimeZone('UTC'))
       ->format('c');
   }
 
+  /**
+   *
+   */
   protected function putObject(string $bucket, string $key, string $body, string $contentType): void {
     [$base, $host, $canonicalUri] = $this->buildEndpoint($bucket, $key);
 

@@ -21,6 +21,9 @@ class MarkerManager {
     protected TimeInterface $time,
   ) {}
 
+  /**
+   *
+   */
   public function create(array $data): int {
     return (int) $this->db->insert('drx_litestream_marker')->fields([
       'uuid' => $this->uuid->generate(),
@@ -65,6 +68,9 @@ class MarkerManager {
       ->execute();
   }
 
+  /**
+   *
+   */
   public function load(int $id): ?array {
     $row = $this->db->select('drx_litestream_marker', 'm')
       ->fields('m')
@@ -85,6 +91,9 @@ class MarkerManager {
       ->fetchAllAssoc('id', \PDO::FETCH_ASSOC);
   }
 
+  /**
+   *
+   */
   public function delete(int $id): void {
     $this->db->delete('drx_litestream_marker')
       ->condition('id', $id)

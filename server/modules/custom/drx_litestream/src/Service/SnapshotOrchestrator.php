@@ -98,7 +98,7 @@ class SnapshotOrchestrator {
    *   consistent_at?:int,
    *   manifest_key?:string,
    *   error?:string,
-   * }
+   *   }
    *
    * @throws \RuntimeException
    *   If litestream is not enabled, the cron lock cannot be acquired,
@@ -425,6 +425,9 @@ class SnapshotOrchestrator {
     return NULL;
   }
 
+  /**
+   *
+   */
   protected function envInt(string $key, int $default, bool $allowZero = FALSE): int {
     $v = getenv($key);
     if ($v === FALSE || $v === '') {

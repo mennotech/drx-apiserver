@@ -21,6 +21,9 @@ class MarkerForm extends FormBase {
     protected LitestreamStatus $status,
   ) {}
 
+  /**
+   *
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('drx_litestream.markers'),
@@ -28,10 +31,16 @@ class MarkerForm extends FormBase {
     );
   }
 
+  /**
+   *
+   */
   public function getFormId(): string {
     return 'drx_litestream_marker_form';
   }
 
+  /**
+   *
+   */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     // The marker's `txid` must be a value that `litestream restore -txid`
     // accepts. That is the LTX-space TXID reported by `litestream ltx`,
@@ -83,6 +92,9 @@ class MarkerForm extends FormBase {
     return $form;
   }
 
+  /**
+   *
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     // See buildForm(): the marker pin must be the LTX-space TXID.
     $txid = $this->status->getReplicaLatestTxid() ?? '';

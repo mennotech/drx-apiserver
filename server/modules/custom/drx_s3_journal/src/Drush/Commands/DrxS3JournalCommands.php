@@ -25,6 +25,9 @@ class DrxS3JournalCommands extends DrushCommands {
     parent::__construct();
   }
 
+  /**
+   *
+   */
   public static function create(ContainerInterface $container): self {
     return new self($container->get('drx_s3_journal.journal'));
   }

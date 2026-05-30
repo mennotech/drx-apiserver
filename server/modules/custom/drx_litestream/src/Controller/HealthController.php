@@ -21,6 +21,9 @@ class HealthController extends ControllerBase {
     protected RemoteReplica $remote,
   ) {}
 
+  /**
+   *
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('drx_litestream.status'),
@@ -28,6 +31,9 @@ class HealthController extends ControllerBase {
     );
   }
 
+  /**
+   *
+   */
   public function overview(): array {
     $build = ['#cache' => ['max-age' => 0]];
 
@@ -142,6 +148,9 @@ class HealthController extends ControllerBase {
     return new RedirectResponse(Url::fromRoute('drx_litestream.health')->toString());
   }
 
+  /**
+   *
+   */
   protected function formatRemoteSize(array $remote): string {
     if (empty($remote['available'])) {
       return $remote['error'] ?? '—';
@@ -149,6 +158,9 @@ class HealthController extends ControllerBase {
     return $this->humanBytes((int) ($remote['bytes'] ?? 0));
   }
 
+  /**
+   *
+   */
   protected function formatRemoteObjects(array $remote): string {
     if (empty($remote['available'])) {
       return '—';
@@ -156,6 +168,9 @@ class HealthController extends ControllerBase {
     return (string) ($remote['objects'] ?? 0);
   }
 
+  /**
+   *
+   */
   protected function formatComputedAt(array $remote): string {
     if (empty($remote['computed_at'])) {
       return '—';
@@ -176,6 +191,9 @@ class HealthController extends ControllerBase {
     return $dateFormatter->format($timestamp, 'medium');
   }
 
+  /**
+   *
+   */
   protected function humanBytes(int $bytes): string {
     $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     $i = 0;
