@@ -17,6 +17,16 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Fixed
+
+- [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  now also triggers on `pull_request` with the same paths filter, so
+  PRs (including from forks) get a dedicated PHPCS check matching the
+  changelog description.
+- [base/.gitattributes](base/.gitattributes) no longer classifies
+  `*.sh` as PHP for GitHub Linguist / diff highlighting; shell scripts
+  are tagged `diff=bash linguist-language=shell`.
+
 ### Changed
 
 - Hardened [Makefile](Makefile) `make smoke-stack` admin-password handling:

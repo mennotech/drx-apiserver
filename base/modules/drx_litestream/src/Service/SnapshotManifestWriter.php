@@ -221,7 +221,7 @@ class SnapshotManifestWriter {
       $signedList[] = $name;
     }
     $signedHeaders = implode(';', $signedList);
-    $canonicalRequest = "PUT\n{$canonicalUri}\n\n{$canonicalHeaders}{$signedHeaders}\n{$payloadHash}";
+    $canonicalRequest = "PUT\n{$canonicalUri}\n\n{$canonicalHeaders}\n{$signedHeaders}\n{$payloadHash}";
     $scope = "{$today}/{$region}/s3/aws4_request";
     $stringToSign = "AWS4-HMAC-SHA256\n{$now}\n{$scope}\n" . hash('sha256', $canonicalRequest);
 

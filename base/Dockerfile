@@ -240,6 +240,12 @@ WORKDIR /var/www/html
 COPY --from=builder --chown=www-data:www-data /var/www/html /var/www/html
 RUN ln -s /var/www/html/vendor/bin/drush /usr/local/bin/drush
 
+# First-party base modules shipped with the image (e.g. drx_litestream,
+# drx_s3_journal). Placed under web/modules/base/ so Drupal's module
+# scanner discovers them while keeping the namespace separate from
+# downstream contrib/custom trees.
+COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/base/
+
 # Drupal-specific writable directories (outside webroot for the database).
 RUN set -eux; \
     install -d -o www-data -g www-data -m 0770 /var/drupal-db; \

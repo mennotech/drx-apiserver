@@ -69,6 +69,7 @@ export DRX_S3_PREFIX_LITESTREAM="${DRX_S3_PREFIX_LITESTREAM:-litestream}"
 export DRX_S3_PREFIX_PRIVATE="${DRX_S3_PREFIX_PRIVATE:-private}"
 export DRX_S3_PREFIX_PUBLIC="${DRX_S3_PREFIX_PUBLIC:-public}"
 export DRX_S3_PREFIX_JOURNAL="${DRX_S3_PREFIX_JOURNAL:-journal/v1}"
+export DRX_S3_PUBLIC_HOST="${DRX_S3_PUBLIC_HOST:-}"
 
 # Module/API contract. Secure-by-default: read-only JSON:API.
 export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"

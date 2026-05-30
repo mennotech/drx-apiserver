@@ -4,8 +4,9 @@
 #
 # The image treats persistent storage as ephemeral compute pointed at an
 # S3 bucket: Litestream replicates the SQLite database under one prefix,
-# and the Drupal file system (private files only) is fronted by s3fs
-# under another. Both share a single set of credentials.
+# and the Drupal file system (both public:// and private:// schemes) is
+# fronted by s3fs under dedicated prefixes. Both share a single set of
+# credentials.
 #
 # This module:
 #   1. Validates the shared DRX_S3_* environment.

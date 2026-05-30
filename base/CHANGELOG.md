@@ -10,6 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- SigV4 canonical request construction in `drx_litestream`
+  (`RemoteReplica`, `SnapshotManifestWriter`) and `drx_s3_journal`
+  (`JournalWriter`) now inserts the required newline between
+  `CanonicalHeaders` and `SignedHeaders`, fixing
+  `403 SignatureDoesNotMatch` on the remote-size probe surfaced at
+  `/admin/config/drx/litestream` and on journal/manifest writes.
+- First-party base modules (`drx_litestream`, `drx_s3_journal`) are now
+  copied into the runtime image at `/var/www/html/web/modules/base/`,
+  so downstream `pm:enable` hooks no longer no-op against an absent
+  modules tree.
+- `DRX_S3_PUBLIC_HOST` is now exported in `base/lib/common.sh`
+  alongside the rest of the shared `DRX_S3_*` contract, matching its
+  documented role in `base/README.md` and its consumers in
+  `base/lib/settings.sh`.
+
+### Changed
+- Corrected the `base/lib/s3.sh` header comment to reflect that s3fs
+  fronts both `public://` and `private://` stream wrappers, not only
+  private files.
+
 ## [0.0.5-rc5] - 2026-05-29
 
 ### Security

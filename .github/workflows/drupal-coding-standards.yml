@@ -8,6 +8,13 @@ on:
       - 'phpcs.xml.dist'
       - 'Makefile'
       - '.github/workflows/drupal-coding-standards.yml'
+  pull_request:
+    paths:
+      - 'server/modules/**'
+      - 'base/modules/contrib/**'
+      - 'phpcs.xml.dist'
+      - 'Makefile'
+      - '.github/workflows/drupal-coding-standards.yml'
 
 permissions:
   contents: read
