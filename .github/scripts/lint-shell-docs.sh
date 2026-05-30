@@ -12,16 +12,17 @@
 #     are walked for *.sh files. When no arguments are given, scans the
 #     repository default set (.github/scripts, base, server/hooks).
 #   - Environment variables:
-#       STRICT (0|1, default 0): if 1, function-level documentation
-#         warnings escalate to failures.
+#       STRICT (0|1, default 1): if 1 (the default), function-level
+#         documentation gaps fail the build. Set STRICT=0 to demote them
+#         to warnings (useful when staging cleanup work).
 #
 # Outputs:
 #   - Findings printed to stdout in `path:line: LEVEL: message` form.
 #   - A summary line printed at the end.
 #
 # Exit codes:
-#   0 — no failures (warnings may be present in non-strict mode).
-#   1 — one or more errors detected (or warnings in strict mode).
+#   0 — no failures (warnings may be present when STRICT=0).
+#   1 — one or more errors detected (or warnings while STRICT=1).
 #   2 — usage error.
 #
 # Policy summary:
@@ -31,7 +32,7 @@
 #        first 20 lines explaining its purpose. Separator-only comments
 #        (e.g. `# ====`) do not count.
 #
-#   Function-level (WARNINGS by default; ERRORS when STRICT=1):
+#   Function-level (ERRORS by default; WARNINGS when STRICT=0):
 #     3. Public functions matching `drx::*` must have at least one
 #        non-blank comment line immediately preceding the definition.
 #        A single blank line between the comment block and the function
@@ -46,7 +47,7 @@
 # =============================================================================
 set -euo pipefail
 
-STRICT="${STRICT:-0}"
+STRICT="${STRICT:-1}"
 
 errors=0
 warnings=0
@@ -111,6 +112,8 @@ check_public_functions() {
     # Iterate over lines, tracking previous lines for context.
     local prev1="" prev2="" prev3=""
     local lineno=0
+    # shellcheck disable=SC2094
+    # SC2094 false positive: print_finding writes to stderr, not "$file".
     while IFS= read -r raw; do
         lineno=$((lineno + 1))
 

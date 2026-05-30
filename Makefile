@@ -18,8 +18,8 @@
 # `make lint-shell-core` — strict ShellCheck profile for CI/bootstrap scripts
 # `make lint-shell-hooks` — hook profile for server/hooks lifecycle scripts
 # `make lint-shell-docs` — enforce shell documentation policy
-#                          (file-level required; function-level warnings,
-#                          set STRICT=1 to escalate)
+#                          (file-level + function-level by default; pass
+#                          STRICT=0 to demote function-level gaps to warnings)
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
@@ -197,8 +197,8 @@ lint-shell-hooks:
 		$(SHELLCHECK_IMAGE) -x -e $(SHELLCHECK_HOOK_EXCLUDES) $$files
 
 # Shell-script documentation policy (see SHELL_POLICY.md). Defaults to
-# warning mode for function-level gaps; pass STRICT=1 to escalate
-# (e.g. `make lint-shell-docs STRICT=1`).
+# strict mode (function-level gaps fail the build); pass STRICT=0 to
+# demote them to warnings (e.g. `make lint-shell-docs STRICT=0`).
 lint-shell-docs:
 	@bash .github/scripts/lint-shell-docs.sh
 

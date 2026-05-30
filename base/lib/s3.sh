@@ -21,6 +21,7 @@ drx::s3::required() {
     [ "${DRX_S3_REQUIRED:-1}" = "1" ]
 }
 
+# Fail fast when S3 is required but mandatory DRX_S3_* env vars are missing.
 drx::s3::validate_env() {
     if ! drx::s3::required; then
         drx::log "s3: DRX_S3_REQUIRED=0; skipping env validation"
@@ -64,6 +65,7 @@ drx::s3::bridge_litestream() {
            LITESTREAM_ACCESS_KEY_ID LITESTREAM_SECRET_ACCESS_KEY
 }
 
+# Probe S3 connectivity + bucket versioning via the PHP helper; die on failure.
 drx::s3::probe() {
     if ! drx::s3::required; then
         drx::log "s3: DRX_S3_REQUIRED=0; skipping connectivity probe"

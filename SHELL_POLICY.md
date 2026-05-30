@@ -70,7 +70,7 @@ File-level (errors, always enforced):
 1. Every shell script must begin with a shebang on line 1.
 2. Every shell script must include at least one substantive purpose comment within the first 20 lines. Separator-only lines (for example `# ====`) do not count.
 
-Function-level (warnings by default; errors when `STRICT=1`):
+Function-level (errors by default; warnings when `STRICT=0`):
 
 1. Public functions matching `drx::*` should be preceded by at least one comment line. A single blank line between the comment block and the function definition is allowed.
 
@@ -79,4 +79,4 @@ Waivers:
 1. File-level waiver: include `# drx-doc-policy: waived` in the file's first 20 lines to skip all checks for that file.
 2. Function-level waiver: include `# drx-doc-skip` within the three lines immediately above a function definition.
 
-Run `make lint-shell-docs STRICT=1` locally to surface remaining function-level gaps during cleanup work.
+Run `make lint-shell-docs STRICT=0` to demote function-level gaps to warnings while staging cleanup work.

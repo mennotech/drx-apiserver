@@ -54,9 +54,10 @@ versioned — entries are grouped by the date of the corresponding
 - Added a shell documentation policy checker
   ([.github/scripts/lint-shell-docs.sh](.github/scripts/lint-shell-docs.sh))
   exposed via [Makefile](Makefile) `make lint-shell-docs`: enforces a
-  shebang + purpose comment per file (errors) and flags missing doc
-  comments on `drx::*` public functions (warnings; opt-in `STRICT=1`).
-  Wired into [.github/workflows/shell-lint.yml](.github/workflows/shell-lint.yml)
+  shebang + purpose comment per file and requires preceding doc
+  comments on `drx::*` public functions. Defaults to strict mode; pass
+  `STRICT=0` to demote function-level gaps to warnings. Wired into
+  [.github/workflows/shell-lint.yml](.github/workflows/shell-lint.yml)
   and documented in [SHELL_POLICY.md](SHELL_POLICY.md).
 
 ## [2026-05-29] (drx-apiserver v0.0.5-rc5)

@@ -216,6 +216,7 @@ drx::litestream::_clear_maintenance_after_restore() {
         >/dev/null 2>&1 || drx::warn "litestream: failed to clear maintenance_mode (will require manual drush sset)"
 }
 
+# Wrap a CMD under `litestream replicate -exec` when enabled; exec directly otherwise.
 drx::litestream::exec_wrap() {
     if ! drx::litestream::enabled; then
         exec "$@"

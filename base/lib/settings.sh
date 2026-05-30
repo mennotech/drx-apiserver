@@ -61,6 +61,7 @@ if (getenv('DRX_S3_REQUIRED') !== '0') {
 PHP
 }
 
+# Render the $databases['default']['default'] block for the active DB driver.
 drx::settings::_db_block() {
     case "${DRUPAL_DB_DRIVER}" in
         sqlite)
@@ -91,6 +92,7 @@ PHP
     esac
 }
 
+# Generate settings.php (once) and (re)write the trusted-hosts include each boot.
 drx::settings::write() {
     if [ ! -f "${DRUPAL_SETTINGS_PHP}" ]; then
         drx::log "Generating settings.php"
@@ -135,6 +137,7 @@ PHP
     drx::settings::_write_trusted_hosts
 }
 
+# Write the trusted-host pattern include from DRUPAL_HOSTNAME + extras env.
 drx::settings::_write_trusted_hosts() {
     local backend_host backend_re extras="" pat
     backend_host="$(drx::normalize_hostname "${DRUPAL_HOSTNAME:-${BACKEND_URL}}")"

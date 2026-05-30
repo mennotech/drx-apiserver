@@ -25,6 +25,7 @@ drx::timezone::_is_valid() {
     return 1
 }
 
+# Best-effort geo-IP lookup that returns a valid IANA tz name, or 'UTC' on failure.
 drx::timezone::_lookup() {
     local candidate url
 
@@ -42,16 +43,19 @@ drx::timezone::_lookup() {
     printf 'UTC'
 }
 
+# Read the timezone currently stored in Drupal's system.date config.
 drx::timezone::_current() {
     drx::drush ev "print \\Drupal::config('system.date')->get('timezone.default');" 2>/dev/null || true
 }
 
+# Persist the given timezone to Drupal's system.date config via drush.
 drx::timezone::_write() {
     local timezone="$1"
 
     drx::drush cset --yes system.date timezone.default "${timezone}" >/dev/null
 }
 
+# Reconcile Drupal's site timezone with DRX_TIMEZONE / geo lookup (fresh installs only).
 drx::timezone::ensure() {
     local desired current source
     local fresh_install="${DRX_INSTALL_WAS_FRESH:-0}"

@@ -122,7 +122,9 @@ export DRX_LITESTREAM_CONTROL_SOCKET_PERMS="${DRX_LITESTREAM_CONTROL_SOCKET_PERM
 
 # Logging ---------------------------------------------------------------------
 drx::log()  { printf '[drx] %s\n' "$*" >&2; }
+# Emit a non-fatal warning to stderr with the standard [drx] prefix.
 drx::warn() { printf '[drx] WARN: %s\n' "$*" >&2; }
+# Emit a fatal error to stderr and exit the orchestrator with status 1.
 drx::die()  { printf '[drx] ERROR: %s\n' "$*" >&2; exit 1; }
 
 # Run as the www-data user; never run drush/composer as root in normal flows.
@@ -130,6 +132,7 @@ drx::as_www() {
     sudo -E -u www-data "$@"
 }
 
+# Invoke drush as www-data against the configured Drupal root.
 drx::drush() {
     drx::as_www "${DRUSH}" --root="${DRUPAL_ROOT}" "$@"
 }
@@ -166,6 +169,8 @@ drx::normalize_hostname() {
     printf '%s' "${raw}"
 }
 
+# Normalize an origin (scheme://host) string, falling back to a caller-supplied
+# default when the input is empty. Strips paths, query strings, and fragments.
 drx::normalize_origin() {
     local raw="$1"
     local default="$2"
@@ -179,6 +184,7 @@ drx::normalize_origin() {
     printf '%s://%s' "${scheme}" "${raw}"
 }
 
+# Escape a string so it can be safely embedded inside a basic ERE / sed pattern.
 drx::escape_regex() {
     printf '%s' "$1" | sed -e 's/[][\\/.^$*+?(){}|]/\\&/g'
 }
