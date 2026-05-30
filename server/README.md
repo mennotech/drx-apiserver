@@ -22,7 +22,7 @@ and [Makefile](../Makefile). For the runtime contract the base provides
 | [Dockerfile](Dockerfile) | Layers this overlay on top of `${BASE_IMAGE}`. |
 | [schema/](schema/) | Source-of-truth `drx-schema` YAML. Not consumed at runtime. |
 | [config/](config/) | Generated Drupal config sync payload (committed). |
-| [modules/custom/](modules/custom/) | Drop-in directory for project custom modules. Empty placeholder today. |
+| [modules/contrib/](modules/contrib/) | Drop-in directory for project contrib modules. Empty placeholder today. |
 | [hooks/post-install.d/](hooks/post-install.d/) | Hooks that run after Drupal install and before config import. |
 | [hooks/post-config-import.d/](hooks/post-config-import.d/) | Hooks that run after the base imports `config/`. |
 | [hooks/post-modules.d/](hooks/post-modules.d/) | Hooks that run after module enablement. |
@@ -174,8 +174,8 @@ and `make up-base`).
 
 ## Litestream replication: admin UI and dev restore
 
-The reference overlay enables the `drx_litestream` custom module (see
-[`modules/custom/drx_litestream/`](modules/custom/drx_litestream/)),
+The reference overlay enables the `drx_litestream` contrib module (see
+[`modules/contrib/drx_litestream/`](modules/contrib/drx_litestream/)),
 which surfaces the base image's litestream integration to operators
 without requiring shell access to the container. Local credentials and
 endpoint come from the shared MinIO sidecar documented above, so the

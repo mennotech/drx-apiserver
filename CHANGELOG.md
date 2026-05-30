@@ -64,9 +64,9 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Added
 
-#### S3-backed content-change journal (drx_s3_journal overlay)
-- New reference-app module
-  [drx_s3_journal](server/modules/custom/drx_s3_journal/) that writes
+#### S3-backed content-change journal (drx_s3_journal base module)
+- New base module
+  [drx_s3_journal](base/modules/drx_s3_journal/) that writes
   one immutable JSON object per Drupal file create/update/delete to
   `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_JOURNAL}/YYYY/MM/DD/HH/<TS>_<event_id>_<op>_<scope>_<fid>.json`,
   scoped to the `public://` and `private://` streams only. The
@@ -151,7 +151,7 @@ versioned — entries are grouped by the date of the corresponding
   and the admin / dev-restore workflow in
   [server/README.md](server/README.md#litestream-replication-admin-ui-and-dev-restore).
 
-#### Application-consistent snapshots (drx_litestream overlay)
+#### Application-consistent snapshots (drx_litestream base module)
 - `drx_litestream` now captures **application-consistent** point-in-time
   markers via a new `SnapshotOrchestrator` service. The orchestrator
   acquires Drupal's core `cron` lock (the same lock `\Drupal\Core\Cron::run()`
@@ -164,7 +164,7 @@ versioned — entries are grouped by the date of the corresponding
   released in `finally`, and SIGINT/SIGTERM handlers run the same
   cleanup on hard termination.
 - Marker schema bumped to v2 in
-  [drx_litestream.install](server/modules/custom/drx_litestream/drx_litestream.install)
+  [drx_litestream.install](base/modules/drx_litestream/drx_litestream.install)
   (`hook_update_9001`): new columns `kind` (`live`/`consistent`),
   `consistent_at`, `bucket`, `s3_endpoint`, `s3_region`, the three
   prefix columns, `base_image_ref`, `drupal_site_uuid`, and
@@ -220,14 +220,14 @@ versioned — entries are grouped by the date of the corresponding
 
 #### Restore-TXID correctness in operator tooling
 - `drx_litestream` "live marker" form
-  ([MarkerForm.php](server/modules/custom/drx_litestream/src/Form/MarkerForm.php))
+  ([MarkerForm.php](base/modules/drx_litestream/src/Form/MarkerForm.php))
   now records the replica's latest LTX-space TXID (via
   `LitestreamStatus::getReplicaLatestTxid()`) instead of the
   WAL-local counter from `litestream status`. The previous value was
   not a valid argument to `litestream restore -txid` and could
   produce markers whose exported restore hint failed.
 - `LitestreamStatus::getHealthSnapshot()`
-  ([LitestreamStatus.php](server/modules/custom/drx_litestream/src/Service/LitestreamStatus.php))
+  ([LitestreamStatus.php](base/modules/drx_litestream/src/Service/LitestreamStatus.php))
   no longer compares the local WAL TXID against the replica's LTX
   TXID. The two values live in different namespaces, so the prior
   "replica appears behind local TXID" warning was a false positive.
@@ -236,7 +236,7 @@ versioned — entries are grouped by the date of the corresponding
   `litestream sync -wait`, so the drill exercises the same restore
   contract the orchestrator and the markers UI rely on.
 - `drx_litestream` snapshot orchestrator
-  ([SnapshotOrchestrator.php](server/modules/custom/drx_litestream/src/Service/SnapshotOrchestrator.php))
+  ([SnapshotOrchestrator.php](base/modules/drx_litestream/src/Service/SnapshotOrchestrator.php))
   default `DRX_LITESTREAM_SNAPSHOT_LOCK_TTL` is now `900` seconds,
   matching the documented default. Previously the code used `120`s,
   which could let the cron lock expire mid-snapshot on slower hosts.

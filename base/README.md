@@ -4,7 +4,7 @@ A reusable, production-oriented Drupal 10 base image for projects that use
 Drupal as the data + auth + security backend behind a decoupled frontend.
 
 This image is deliberately neutral: no project-specific modules, branding,
-config payload, or platform-specific deployment behaviour is baked in.
+config payload, or platform-specific deployment behaviour is baked in. It does, however, include base modules for S3 and snapshot orchestration.
 Downstream projects extend it through documented extension points.
 
 ---
@@ -34,8 +34,8 @@ Downstream projects extend it through documented extension points.
 - It does not assume a deployment platform. Fly.io, Kubernetes, Compose,
   Nomad, etc. are all supported through the same env contract; example
   overlays live with downstream projects, not in this base image.
-- It does not bundle any project's custom modules, content types, or
-  config sync payload.
+- It does not bundle any project's contributed modules, content types, or
+  config sync payload. Only the base modules for S3 and snapshot orchestration are included.
 
 ---
 
@@ -271,7 +271,7 @@ deployment platform.
 The base image only provides the runtime contract. Operator-facing UI
 (replication health dashboard, point-in-time marker capture and export)
 lives in a downstream module — see the reference implementation in
-[server/modules/custom/drx_litestream](../server/modules/custom/drx_litestream).
+[server/modules/contrib/drx_litestream](../server/modules/contrib/drx_litestream).
 
 ---
 
