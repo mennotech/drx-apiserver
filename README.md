@@ -81,9 +81,14 @@ Local orchestration is via [Makefile](Makefile):
 | `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
 | `make lint-drupal` | Run Drupal coding standards (Drupal + DrupalPractice) for custom module code under [server/modules/custom](server/modules/custom). |
+| `make lint-shell` | Run tiered ShellCheck policy (core + hooks). |
+| `make lint-shell-core` | Run strict ShellCheck profile for core scripts in [.github/scripts](.github/scripts) and [base](base). |
+| `make lint-shell-hooks` | Run hook profile for lifecycle scripts in [server/hooks](server/hooks). |
 | `make dr-drill` | Run a local disaster-recovery drill (write DB+file markers, recreate backend, restore from litestream/S3). |
 | `make pit-drill` | Run a local point-in-time drill (TXID-pinned restore against the MinIO replica). |
 | `make clean` | Remove build artifacts and local image tags.            |
+
+Shell path policy is documented in [SHELL_POLICY.md](SHELL_POLICY.md).
 
 Override `VERSION`, `BASE_IMAGE`, `APP_IMAGE`, or `SMOKE_PORT` on the
 command line if needed, e.g. `make base VERSION=0.2.0-dev`.

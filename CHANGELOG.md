@@ -42,6 +42,15 @@ versioned — entries are grouped by the date of the corresponding
   requiring host PHP/Composer tooling; added
   [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
   to enforce the same check on push and pull request changes.
+- Added a containerized [Makefile](Makefile) `make lint-shell` target that
+  runs ShellCheck for repository shell scripts under [base](base),
+  [server](server), and [.github](.github).
+- Split shell linting into path-scoped policy tiers documented in
+  [SHELL_POLICY.md](SHELL_POLICY.md):
+  [Makefile](Makefile) now provides `make lint-shell-core` for strict
+  checks on [.github/scripts](.github/scripts) + [base](base) and
+  `make lint-shell-hooks` for [server/hooks](server/hooks), with
+  `make lint-shell` running both profiles.
 
 ## [2026-05-29] (drx-apiserver v0.0.5-rc5)
 

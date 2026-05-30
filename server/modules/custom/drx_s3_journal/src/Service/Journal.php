@@ -215,7 +215,7 @@ class Journal {
    * Snapshot of {file_usage} for this fid at the moment of the event.
    *
    * @return list<array{module:string,type:string,id:string,count:int}>
-  *   Current file usage rows keyed by module/type/id.
+   *   Current file usage rows keyed by module/type/id.
    */
   protected function collectUsage(int $fid): array {
     if ($fid <= 0 || !$this->database->schema()->tableExists('file_usage')) {

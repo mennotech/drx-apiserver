@@ -13,6 +13,10 @@
 #                     the seeded JSON:API endpoint returns the expected notes
 # `make lint-drupal` — run Drupal + DrupalPractice coding standards on custom
 #                       module code in server/modules/custom
+# `make lint-drupal-fix` — auto-fix Drupal coding standards where possible
+# `make lint-shell` — run tiered ShellCheck policy (core + hooks)
+# `make lint-shell-core` — strict ShellCheck profile for CI/bootstrap scripts
+# `make lint-shell-hooks` — hook profile for server/hooks lifecycle scripts
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
@@ -47,12 +51,15 @@ COMPOSE_ARGS      ?= -f $(COMPOSE_FILE) --project-directory . -p $(COMPOSE_PROJE
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
 TRIVY_VERSION  ?= 0.70.0
 TRIVY_SEVERITY ?= CRITICAL,HIGH
+SHELLCHECK_IMAGE ?= koalaman/shellcheck:v0.10.0
+SHELLCHECK_CORE_EXCLUDES ?= SC1090,SC1091
+SHELLCHECK_HOOK_EXCLUDES ?= SC2016
 DR_DRILL_HEALTH_TIMEOUT ?= 90
 DR_DRILL_SYNC_WAIT      ?= 3
 SMOKE_STACK_TIMEOUT      ?= 180
 SHOW_ADMIN_PASS         ?= 0
 
-.PHONY: base app build up up-build down up-base down-base smoke smoke-stack lint-drupal scan verify dr-drill pit-drill snapshot-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke smoke-stack lint-drupal lint-drupal-fix lint-shell lint-shell-core lint-shell-hooks scan verify dr-drill pit-drill snapshot-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -147,6 +154,44 @@ lint-drupal:
 			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
 			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
 			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/server/modules/custom'
+
+lint-drupal-fix:
+	@mkdir -p "$${HOME}/.cache/composer"
+	@$(CONTAINER_ENGINE) run --rm \
+		-v "$$(pwd):/work" \
+		-v "$${HOME}/.cache/composer:/tmp/composer-cache" \
+		-e COMPOSER_CACHE_DIR=/tmp/composer-cache \
+		-w /tmp composer:2 sh -lc '\
+			set -eu; \
+			mkdir -p /tmp/drupal-cs && cd /tmp/drupal-cs; \
+			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
+			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
+			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
+			./vendor/bin/phpcbf --standard=/work/phpcs.xml.dist /work/server/modules/custom; \
+			rc=$$?; [ $$rc -eq 0 ] || [ $$rc -eq 1 ]'
+
+# Tiered shell lint policy:
+#   - core scripts: .github/scripts + base/*.sh + base/lib/*.sh
+#   - hook scripts: server/hooks/**/*.sh
+lint-shell: lint-shell-core lint-shell-hooks
+
+lint-shell-core:
+	@files="$$(rg --files -g '*.sh' .github/scripts base)"; \
+	if [ -z "$$files" ]; then echo "No core shell scripts found"; exit 0; fi; \
+	echo "Shell lint (core profile): $$files"; \
+	$(CONTAINER_ENGINE) run --rm \
+		-v "$$(pwd):/work" \
+		-w /work \
+		$(SHELLCHECK_IMAGE) -x -e $(SHELLCHECK_CORE_EXCLUDES) $$files
+
+lint-shell-hooks:
+	@files="$$(rg --files -g '*.sh' server/hooks)"; \
+	if [ -z "$$files" ]; then echo "No hook shell scripts found"; exit 0; fi; \
+	echo "Shell lint (hooks profile): $$files"; \
+	$(CONTAINER_ENGINE) run --rm \
+		-v "$$(pwd):/work" \
+		-w /work \
+		$(SHELLCHECK_IMAGE) -x -e $(SHELLCHECK_HOOK_EXCLUDES) $$files
 
 # Run Trivy with the same gating policy as CI:
 #   - severity: CRITICAL,HIGH
