@@ -58,6 +58,20 @@ Local commands (see [Makefile](Makefile)):
 - `make smoke` — boot the base image and wait for the healthcheck to
   report `healthy`. This is the minimum local check before pushing
   changes to `base/`.
+- `make smoke-stack` — boot the full compose stack (app + MinIO),
+  wait for healthcheck, and assert the seeded JSON:API endpoint
+  returns the expected notes. Recommended pre-push check for any
+  change under [server/](server/) or the bootstrap pipeline (compose,
+  hooks, overlay modules, seeded config).
+- `make lint-drupal` — run Drupal + DrupalPractice coding standards
+  against [server/modules/custom](server/modules/custom). Use
+  `make lint-drupal-fix` to auto-correct fixable findings.
+- `make lint-shell` — run the tiered ShellCheck policy (core + hooks)
+  defined in [SHELL_POLICY.md](SHELL_POLICY.md).
+- `make lint-shell-docs` — enforce the shell documentation policy
+  (file-level + `drx::*` function-level docs). Strict by default; pass
+  `STRICT=0` to demote function-level gaps to warnings while staging
+  cleanup work.
 - `make build` / `make up` / `make down` — build and run the reference
   overlay via [server/docker-compose.yml](server/docker-compose.yml).
 - `make clean` — remove build artifacts and local image tags.
@@ -67,8 +81,22 @@ command line as needed. The smoke target inspects container health via
 `docker inspect`; a non-running container fails fast rather than waiting
 out the timeout.
 
-Before opening a PR that touches `base/`, run `make smoke` and confirm
-it reports `ok after Ns`.
+Before opening a PR:
+
+- Run `make lint-shell` and `make lint-shell-docs` whenever you touch
+  any shell script under [.github/scripts](.github/scripts), [base](base),
+  or [server/hooks](server/hooks).
+- Run `make lint-drupal` whenever you touch PHP under
+  [server/modules/custom](server/modules/custom).
+- Run `make smoke` whenever you touch anything under [base/](base/) or
+  the bootstrap library, and confirm it reports `ok after Ns`.
+- Run `make smoke-stack` whenever you touch anything under
+  [server/](server/) or the bootstrap pipeline (compose, hooks,
+  overlay modules, seeded config); confirm it reports the seeded
+  JSON:API notes count and tears the stack down cleanly.
+
+CI runs the same checks; failing them locally first keeps the feedback
+loop short.
 
 ## CI expectations
 
@@ -107,8 +135,16 @@ A useful default workflow for an agent:
    - Image behaviour → [base/CHANGELOG.md](base/CHANGELOG.md).
    - Repo operations → [CHANGELOG.md](CHANGELOG.md).
 4. Run `make smoke` for any change under `base/` or to the bootstrap
-   library.
-5. Do not bump version numbers, create git tags, or draft GitHub
+   library, and `make smoke-stack` for any change under `server/` or
+   the bootstrap pipeline (compose, hooks, overlay modules, seeded
+   config).
+5. Run the relevant lint targets before opening a PR:
+   - `make lint-shell` and `make lint-shell-docs` for any change to
+     shell scripts under [.github/scripts](.github/scripts), [base](base),
+     or [server/hooks](server/hooks).
+   - `make lint-drupal` for any change to PHP under
+     [server/modules/custom](server/modules/custom).
+6. Do not bump version numbers, create git tags, or draft GitHub
    Releases. Releases are a maintainer action; see
    [RELEASES.md → Release procedure](RELEASES.md#release-procedure-maintainers).
 
