@@ -39,6 +39,12 @@ versioned — entries are grouped by the date of the corresponding
   links to the first-party module under
   [base/modules/drx_litestream/](base/modules/drx_litestream/) instead
   of the removed `server/modules/contrib/drx_litestream/` path.
+- [server/hooks/post-modules.d/40-drush-updatedb.sh](server/hooks/post-modules.d/40-drush-updatedb.sh)
+  now uses the `drx::drush` helper instead of hard-coding
+  `/var/www/html/vendor/bin/drush` and `--root=/var/www/html/web`, so
+  the hook tracks the base bootstrap's runtime contract
+  (`DRUPAL_ROOT`, `DRUSH`) and matches the pattern used by sibling
+  hooks.
 
 ### Changed
 
