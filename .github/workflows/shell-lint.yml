@@ -29,3 +29,6 @@ jobs:
 
       - name: Run shell lint
         run: make lint-shell
+
+      - name: Run shell documentation lint
+        run: make lint-shell-docs

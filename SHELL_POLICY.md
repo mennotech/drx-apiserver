@@ -60,3 +60,23 @@ Use `make lint-shell` to run both profiles.
 - New scripts must be placed in the correct tier path.
 - If a script needs an exception not covered by tier defaults, prefer a local `# shellcheck disable=...` with a short justification.
 - Keep the exception lists small and path-scoped; avoid global blanket disables.
+
+## Documentation Policy
+
+Enforced via `make lint-shell-docs` (see [.github/scripts/lint-shell-docs.sh](.github/scripts/lint-shell-docs.sh)).
+
+File-level (errors, always enforced):
+
+1. Every shell script must begin with a shebang on line 1.
+2. Every shell script must include at least one substantive purpose comment within the first 20 lines. Separator-only lines (for example `# ====`) do not count.
+
+Function-level (warnings by default; errors when `STRICT=1`):
+
+1. Public functions matching `drx::*` should be preceded by at least one comment line. A single blank line between the comment block and the function definition is allowed.
+
+Waivers:
+
+1. File-level waiver: include `# drx-doc-policy: waived` in the file's first 20 lines to skip all checks for that file.
+2. Function-level waiver: include `# drx-doc-skip` within the three lines immediately above a function definition.
+
+Run `make lint-shell-docs STRICT=1` locally to surface remaining function-level gaps during cleanup work.

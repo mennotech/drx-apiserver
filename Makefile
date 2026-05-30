@@ -17,6 +17,9 @@
 # `make lint-shell` — run tiered ShellCheck policy (core + hooks)
 # `make lint-shell-core` — strict ShellCheck profile for CI/bootstrap scripts
 # `make lint-shell-hooks` — hook profile for server/hooks lifecycle scripts
+# `make lint-shell-docs` — enforce shell documentation policy
+#                          (file-level required; function-level warnings,
+#                          set STRICT=1 to escalate)
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
@@ -59,7 +62,7 @@ DR_DRILL_SYNC_WAIT      ?= 3
 SMOKE_STACK_TIMEOUT      ?= 180
 SHOW_ADMIN_PASS         ?= 0
 
-.PHONY: base app build up up-build down up-base down-base smoke smoke-stack lint-drupal lint-drupal-fix lint-shell lint-shell-core lint-shell-hooks scan verify dr-drill pit-drill snapshot-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke smoke-stack lint-drupal lint-drupal-fix lint-shell lint-shell-core lint-shell-hooks lint-shell-docs scan verify dr-drill pit-drill snapshot-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -192,6 +195,12 @@ lint-shell-hooks:
 		-v "$$(pwd):/work" \
 		-w /work \
 		$(SHELLCHECK_IMAGE) -x -e $(SHELLCHECK_HOOK_EXCLUDES) $$files
+
+# Shell-script documentation policy (see SHELL_POLICY.md). Defaults to
+# warning mode for function-level gaps; pass STRICT=1 to escalate
+# (e.g. `make lint-shell-docs STRICT=1`).
+lint-shell-docs:
+	@bash .github/scripts/lint-shell-docs.sh
 
 # Run Trivy with the same gating policy as CI:
 #   - severity: CRITICAL,HIGH

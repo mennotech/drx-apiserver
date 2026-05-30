@@ -84,6 +84,7 @@ Local orchestration is via [Makefile](Makefile):
 | `make lint-shell` | Run tiered ShellCheck policy (core + hooks). |
 | `make lint-shell-core` | Run strict ShellCheck profile for core scripts in [.github/scripts](.github/scripts) and [base](base). |
 | `make lint-shell-hooks` | Run hook profile for lifecycle scripts in [server/hooks](server/hooks). |
+| `make lint-shell-docs` | Enforce shell documentation policy (file-level errors; function-level warnings, `STRICT=1` to escalate). |
 | `make dr-drill` | Run a local disaster-recovery drill (write DB+file markers, recreate backend, restore from litestream/S3). |
 | `make pit-drill` | Run a local point-in-time drill (TXID-pinned restore against the MinIO replica). |
 | `make clean` | Remove build artifacts and local image tags.            |

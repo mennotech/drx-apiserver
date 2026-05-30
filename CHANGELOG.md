@@ -51,6 +51,13 @@ versioned — entries are grouped by the date of the corresponding
   checks on [.github/scripts](.github/scripts) + [base](base) and
   `make lint-shell-hooks` for [server/hooks](server/hooks), with
   `make lint-shell` running both profiles.
+- Added a shell documentation policy checker
+  ([.github/scripts/lint-shell-docs.sh](.github/scripts/lint-shell-docs.sh))
+  exposed via [Makefile](Makefile) `make lint-shell-docs`: enforces a
+  shebang + purpose comment per file (errors) and flags missing doc
+  comments on `drx::*` public functions (warnings; opt-in `STRICT=1`).
+  Wired into [.github/workflows/shell-lint.yml](.github/workflows/shell-lint.yml)
+  and documented in [SHELL_POLICY.md](SHELL_POLICY.md).
 
 ## [2026-05-29] (drx-apiserver v0.0.5-rc5)
 

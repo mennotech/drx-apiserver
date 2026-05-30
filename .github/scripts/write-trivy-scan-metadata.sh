@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Purpose: emit the JSON metadata sidecar that accompanies the Trivy scan
+# artifact (digest, image/release tags, support lines, category).
 set -euo pipefail
 
 if [[ -z "${ARTIFACT_NAME:-}" ]]; then
