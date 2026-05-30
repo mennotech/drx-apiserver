@@ -35,6 +35,13 @@ versioned — entries are grouped by the date of the corresponding
 - Updated [.github/workflows/smoke-stack.yml](.github/workflows/smoke-stack.yml)
   to stop hardcoding a static CI admin password; CI now uses the
   Makefile-generated ephemeral password unless explicitly overridden.
+- Adopted Drupal coding standards for custom app code by adding
+  [phpcs.xml.dist](phpcs.xml.dist) (Drupal + DrupalPractice rules) and a
+  containerized [Makefile](Makefile) `make lint-drupal` target that runs
+  PHPCS against [server/modules/custom](server/modules/custom) without
+  requiring host PHP/Composer tooling; added
+  [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  to enforce the same check on push and pull request changes.
 
 ## [2026-05-29] (drx-apiserver v0.0.5-rc5)
 

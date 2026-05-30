@@ -11,6 +11,8 @@
 # `make smoke`  — boot the base image and hit its healthcheck
 # `make smoke-stack` — boot the full compose stack (app + MinIO) and assert
 #                     the seeded JSON:API endpoint returns the expected notes
+# `make lint-drupal` — run Drupal + DrupalPractice coding standards on custom
+#                       module code in server/modules/custom
 # `make scan`   — run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed)
 # `make verify` — smoke + scan; the minimum check before `git push`
 # `make dr-drill` — local disaster-recovery drill (DB + files restore from replica/S3)
@@ -50,7 +52,7 @@ DR_DRILL_SYNC_WAIT      ?= 3
 SMOKE_STACK_TIMEOUT      ?= 180
 SHOW_ADMIN_PASS         ?= 0
 
-.PHONY: base app build up up-build down up-base down-base smoke smoke-stack scan verify dr-drill pit-drill snapshot-drill clean
+.PHONY: base app build up up-build down up-base down-base smoke smoke-stack lint-drupal scan verify dr-drill pit-drill snapshot-drill clean
 
 base:
 	$(CONTAINER_ENGINE) build \
@@ -128,6 +130,23 @@ smoke: base
 			echo "ok after $${i}s"; $(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null; exit 0; fi; \
 		sleep 2; done; \
 	echo "smoke failed"; $(CONTAINER_ENGINE) logs drx-smoke || true; $(CONTAINER_ENGINE) rm -f drx-smoke >/dev/null 2>&1 || true; exit 1
+
+# Run Drupal coding standards (Drupal + DrupalPractice) against project custom
+# modules only. This target is intentionally containerized so contributors do
+# not need host PHP/Composer installs.
+lint-drupal:
+	@mkdir -p "$${HOME}/.cache/composer"
+	@$(CONTAINER_ENGINE) run --rm \
+		-v "$$(pwd):/work" \
+		-v "$${HOME}/.cache/composer:/tmp/composer-cache" \
+		-e COMPOSER_CACHE_DIR=/tmp/composer-cache \
+		-w /tmp composer:2 sh -lc '\
+			set -eu; \
+			mkdir -p /tmp/drupal-cs && cd /tmp/drupal-cs; \
+			composer init --no-interaction --name drx/drupal-cs --type project >/dev/null; \
+			composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true >/dev/null; \
+			composer require --no-interaction drupal/coder:^8.3 >/dev/null; \
+			./vendor/bin/phpcs --standard=/work/phpcs.xml.dist /work/server/modules/custom'
 
 # Run Trivy with the same gating policy as CI:
 #   - severity: CRITICAL,HIGH

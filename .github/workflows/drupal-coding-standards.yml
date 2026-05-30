@@ -1,0 +1,29 @@
+name: drupal-coding-standards
+
+on:
+  push:
+    paths:
+      - 'server/modules/custom/**'
+      - 'phpcs.xml.dist'
+      - 'Makefile'
+      - '.github/workflows/drupal-coding-standards.yml'
+  pull_request:
+    paths:
+      - 'server/modules/custom/**'
+      - 'phpcs.xml.dist'
+      - 'Makefile'
+      - '.github/workflows/drupal-coding-standards.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Drupal coding standards (PHPCS)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Drupal coding standards
+        run: make lint-drupal
