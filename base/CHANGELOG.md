@@ -24,8 +24,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `Drupal\drx_s3_journal\Service\Journal::getJournalPrefix()` and
   `previewKey()` helpers to support the new commands without
   duplicating prefix/key construction logic.
+- `drx_litestream` HTTP API: `GET /drx-litestream/v1/status` and
+  `POST /drx-litestream/v1/snapshot` endpoints authenticated by a
+  Bearer token in `DRX_LITESTREAM_API_TOKEN`. Designed for external
+  monitoring tools (Zabbix, Uptime Kuma) and remote snapshot
+  orchestration (K8s CronJob, CI pipelines, webhooks). Snapshot
+  operations via the API run in the Apache process tree and therefore
+  have full access to `DRX_S3_*` credentials injected by `init.sh`,
+  resolving the credential gap that affects `docker exec`-based Drush
+  invocations.
+- `DRX_LITESTREAM_API_ALLOWED_IPS`: comma-separated client IP addresses
+  or CIDR ranges permitted to call the litestream HTTP API. Defaults to
+  `127.0.0.1,::1` (localhost only). Uses `IpUtils::checkIp()` (IPv4,
+  IPv6, and CIDR). The check runs before token validation.
+- `DRX_REVERSE_PROXY_IPS`: comma-separated proxy IP addresses or CIDR
+  ranges written into `trusted-hosts.settings.php` each boot. When set,
+  Drupal resolves the real client IP from `X-Forwarded-For` for requests
+  arriving from these addresses, enabling `DRX_LITESTREAM_API_ALLOWED_IPS`
+  to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_litestream` snapshot verification now falls back to the daemon's
+  `replicated_txid` (from `litestream sync -wait`) when `litestream ltx`
+  cannot enumerate remote LTX files in the current CLI environment
+  (for example, when Drush is invoked via `docker exec` without ambient
+  AWS credentials). This prevents false-negative snapshot failures with
+  empty TXID pins and keeps `drx:litestream:snapshot` usable in local
+  compose workflows.
+- `LitestreamStatus::getReplicaLatestTxid()` now parses both decimal and
+  hex-like `litestream ltx` table output (and strips ANSI escapes)
+  instead of assuming fixed-width 16-char hex columns.
 - `Drupal\drx_litestream\Service\LitestreamStatus::isEnabled()` and
   `getReplicaUrl()` now derive from the shared `DRX_S3_*` contract
   when the bootstrap-internal `DRX_LITESTREAM_*` env vars are not

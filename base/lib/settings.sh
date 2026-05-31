@@ -159,6 +159,23 @@ drx::settings::_write_trusted_hosts() {
   '^127\\.0\\.0\\.1(:\\d+)?\$',
   '^${backend_re}(:\\d+)?\$',
 ${extras}];
+
+// Reverse proxy: tell Drupal which upstream proxy IPs to trust for
+// X-Forwarded-For / X-Forwarded-Proto header processing so that
+// \$request->getClientIp() returns the real originating IP rather than
+// the proxy address. Required when the container sits behind an API
+// gateway or load balancer.
+//
+// Set DRX_REVERSE_PROXY_IPS to a comma-separated list of proxy IPs or
+// CIDR ranges (e.g. "10.0.0.1" or "10.0.0.0/8"). This file is
+// regenerated each boot so a change to the env var takes effect on the
+// next container restart without a full image rebuild.
+if ((\$drx_proxy_ips = getenv('DRX_REVERSE_PROXY_IPS')) !== FALSE && \$drx_proxy_ips !== '') {
+  \$settings['reverse_proxy'] = TRUE;
+  \$settings['reverse_proxy_addresses'] = array_values(
+    array_filter(array_map('trim', explode(',', \$drx_proxy_ips)))
+  );
+}
 PHP
     chown www-data:www-data "${DRUPAL_TRUSTED_HOSTS_PHP}"
     chmod 0440 "${DRUPAL_TRUSTED_HOSTS_PHP}"

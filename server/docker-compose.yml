@@ -80,6 +80,21 @@ services:
       # derives the replica URL from DRX_S3_BUCKET +
       # DRX_S3_PREFIX_LITESTREAM so there is a single source of truth
       # and no split-credential drift.
+      # HTTP API token — gated by DRX_LITESTREAM_API_TOKEN; required for
+      # GET /drx-litestream/v1/status and POST /drx-litestream/v1/snapshot.
+      # Override via .env. Omit to disable the API.
+      DRX_LITESTREAM_API_TOKEN: ${DRX_LITESTREAM_API_TOKEN:-dev-only-token-change-in-prod}
+      # Allowed client IPs for the litestream HTTP API (comma-separated IPs or
+      # CIDR ranges). Defaults to localhost only. When the container sits behind
+      # a reverse proxy, set DRX_REVERSE_PROXY_IPS to the proxy's IP so that
+      # $request->getClientIp() resolves to the real caller before this check.
+      DRX_LITESTREAM_API_ALLOWED_IPS: ${DRX_LITESTREAM_API_ALLOWED_IPS:-127.0.0.1,::1}
+      # Trusted reverse-proxy IPs (comma-separated IPs or CIDR ranges). When
+      # set, Drupal reads the real client IP from X-Forwarded-For for requests
+      # arriving from these addresses. Required when the container is behind an
+      # API gateway or load balancer. Regenerated into trusted-hosts.settings.php
+      # on each boot — a restart is sufficient to apply changes.
+      DRX_REVERSE_PROXY_IPS: ${DRX_REVERSE_PROXY_IPS:-}
     restart: unless-stopped
 
 volumes:

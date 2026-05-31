@@ -65,3 +65,32 @@ drx_litestream.marker_delete:
   requirements:
     _permission: 'administer drx litestream'
     id: \d+
+
+# ── External HTTP API ─────────────────────────────────────────────────────────
+# Gated by DRX_LITESTREAM_API_TOKEN Bearer auth (see ApiTokenAccessCheck).
+# Intended for external monitoring (Zabbix, Uptime Kuma) and snapshot
+# orchestration (K8s CronJob, CI pipelines, webhooks).
+# The _drx_litestream_api_token requirement key is unique to this module
+# so the checker does not interfere with other modules' _custom_access usage.
+
+drx_litestream.api_status:
+  path: '/drx-litestream/v1/status'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\ApiController::status'
+    _title: 'Litestream API: status'
+  requirements:
+    _drx_litestream_api_token: 'TRUE'
+  methods: [GET]
+  options:
+    no_cache: TRUE
+
+drx_litestream.api_snapshot:
+  path: '/drx-litestream/v1/snapshot'
+  defaults:
+    _controller: '\Drupal\drx_litestream\Controller\ApiController::snapshot'
+    _title: 'Litestream API: snapshot'
+  requirements:
+    _drx_litestream_api_token: 'TRUE'
+  methods: [POST]
+  options:
+    no_cache: TRUE

@@ -136,9 +136,19 @@ class LitestreamStatus {
     $out = [];
     $rc = 0;
     @exec("$bin sync -socket $sock -wait -timeout $timeout $db 2>&1", $out, $rc);
+    $joined = implode("\n", $out);
+    $parsed = [];
+    if (preg_match('/\{.*\}/s', $joined, $m)) {
+      $decoded = json_decode($m[0], TRUE);
+      if (is_array($decoded)) {
+        $parsed = $decoded;
+      }
+    }
     return [
       'ok' => $rc === 0,
-      'output' => implode("\n", $out),
+      'output' => $joined,
+      'txid' => isset($parsed['txid']) ? (string) $parsed['txid'] : '',
+      'replicated_txid' => isset($parsed['replicated_txid']) ? (string) $parsed['replicated_txid'] : '',
     ];
   }
 
@@ -224,14 +234,63 @@ class LitestreamStatus {
     }
     $max = NULL;
     foreach ($out as $line) {
-      if (preg_match('/([0-9a-f]{16})\s+([0-9a-f]{16})/i', $line, $m)) {
-        $cand = strtolower($m[2]);
-        if ($max === NULL || strcmp($cand, $max) > 0) {
-          $max = $cand;
-        }
+      $plain = preg_replace('/\x1b\[[0-9;]*[A-Za-z]/', '', (string) $line);
+      if (!is_string($plain)) {
+        continue;
+      }
+      $trim = trim($plain);
+      if ($trim === '' || str_starts_with(strtolower($trim), 'level ')) {
+        continue;
+      }
+      $cols = preg_split('/\s+/', $trim);
+      if (!is_array($cols) || count($cols) < 3) {
+        continue;
+      }
+      // `litestream ltx` rows are: level, min_txid, max_txid, ...
+      $cand = trim((string) ($cols[2] ?? ''));
+      if ($cand === '' || !$this->isComparableTxid($cand)) {
+        continue;
+      }
+      if ($max === NULL || $this->compareTxids($cand, $max) > 0) {
+        $max = $cand;
       }
     }
     return $max;
+  }
+
+  /**
+   * Returns TRUE when the value looks like a decimal or hex TXID.
+   */
+  protected function isComparableTxid(string $txid): bool {
+    $t = trim($txid);
+    return (bool) preg_match('/^[0-9]+$/', $t)
+      || (bool) preg_match('/^[0-9a-fA-F]{1,16}$/', $t);
+  }
+
+  /**
+   * Compares two TXID strings (decimal or hex-like).
+   */
+  protected function compareTxids(string $a, string $b): int {
+    $a = trim($a);
+    $b = trim($b);
+    $aDec = (bool) preg_match('/^[0-9]+$/', $a);
+    $bDec = (bool) preg_match('/^[0-9]+$/', $b);
+    if ($aDec && $bDec) {
+      $la = strlen($a);
+      $lb = strlen($b);
+      if ($la !== $lb) {
+        return $la <=> $lb;
+      }
+      return strcmp($a, $b);
+    }
+    $aHex = strtolower($a);
+    $bHex = strtolower($b);
+    $la = strlen($aHex);
+    $lb = strlen($bHex);
+    if ($la !== $lb) {
+      return $la <=> $lb;
+    }
+    return strcmp($aHex, $bHex);
   }
 
   /**

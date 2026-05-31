@@ -256,7 +256,7 @@ class SnapshotOrchestrator {
 
       // If the UPDATE advanced the TXID, record the higher value so
       // the restore pin matches the fully-populated marker row.
-      if (strcmp(strtolower($finalTxid), strtolower($preTxid)) > 0) {
+      if ($this->compareTxids($finalTxid, $preTxid) > 0) {
         $this->markers->update($id, ['txid' => $finalTxid]);
       }
 
@@ -414,16 +414,62 @@ class SnapshotOrchestrator {
     do {
       $r = $this->status->getReplicaLatestTxid();
       if ($r !== NULL && trim($r) !== '') {
-        return strtolower($r);
+        return $this->normalizeTxid($r);
       }
       $last = $r;
       usleep(500000);
     } while (time() < $deadline);
 
     if ($last !== NULL) {
-      return strtolower($last);
+      return $this->normalizeTxid($last);
+    }
+
+    // Some container/Drush executions cannot resolve S3 credentials for
+    // `litestream ltx`, even though the daemon-side `sync -wait` succeeds.
+    // In that case, use the daemon-reported replicated_txid as fallback.
+    $syncTxid = trim((string) ($sync['replicated_txid'] ?? ''));
+    if ($syncTxid !== '') {
+      $log->warning('snapshot: using sync-reported replicated_txid fallback (@txid)', [
+        '@txid' => $syncTxid,
+      ]);
+      return $this->normalizeTxid($syncTxid);
     }
     return NULL;
+  }
+
+  /**
+   * Normalize a txid for stable storage and comparisons.
+   */
+  protected function normalizeTxid(string $txid): string {
+    $t = trim($txid);
+    if ((bool) preg_match('/^[0-9]+$/', $t)) {
+      return $t;
+    }
+    return strtolower($t);
+  }
+
+  /**
+   * Compare txids that may be decimal or hex-like.
+   */
+  protected function compareTxids(string $a, string $b): int {
+    $a = $this->normalizeTxid($a);
+    $b = $this->normalizeTxid($b);
+    $aDec = (bool) preg_match('/^[0-9]+$/', $a);
+    $bDec = (bool) preg_match('/^[0-9]+$/', $b);
+    if ($aDec && $bDec) {
+      $la = strlen($a);
+      $lb = strlen($b);
+      if ($la !== $lb) {
+        return $la <=> $lb;
+      }
+      return strcmp($a, $b);
+    }
+    $la = strlen($a);
+    $lb = strlen($b);
+    if ($la !== $lb) {
+      return $la <=> $lb;
+    }
+    return strcmp($a, $b);
   }
 
   /**
