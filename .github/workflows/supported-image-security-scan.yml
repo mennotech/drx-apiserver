@@ -1,6 +1,9 @@
 name: supported-image-security-scan
 
 on:
+  pull_request:
+    branches:
+      - main
   schedule:
     - cron: '13 3 * * *'
   workflow_dispatch:

@@ -1,0 +1,4 @@
+administer drx litestream:
+  title: 'Administer DrX Litestream'
+  description: 'View replication health and manage point-in-time restore markers.'
+  restrict access: true

@@ -18,6 +18,7 @@ drx::install::_db_ready() {
     esac
 }
 
+# Render the db-url string drush site:install expects for the active DB driver.
 drx::install::_db_url() {
     case "${DRUPAL_DB_DRIVER}" in
         sqlite) printf 'sqlite:///%s' "${DRUPAL_SQLITE_PATH}" ;;
@@ -33,7 +34,13 @@ drx::install::_db_url() {
     esac
 }
 
+# Idempotent installer: run site:install when the DB is empty, otherwise no-op.
+# Sets DRX_INSTALL_WAS_FRESH=1 on a fresh install for downstream hooks.
 drx::install::ensure() {
+    # shellcheck disable=SC2034
+    # This flag is consumed by other sourced drx:: functions (e.g. timezone).
+    DRX_INSTALL_WAS_FRESH=0
+
     if drx::install::_db_ready; then
         drx::log "Drupal already installed"
         return 0
@@ -58,4 +65,7 @@ drx::install::ensure() {
         --account-pass="${DRUPAL_ADMIN_PASS}" \
         --site-name="${DRUPAL_SITE_NAME}" \
         --yes
+
+    # shellcheck disable=SC2034
+    DRX_INSTALL_WAS_FRESH=1
 }

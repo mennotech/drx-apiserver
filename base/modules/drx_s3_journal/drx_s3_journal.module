@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * DrX S3 Journal module hooks.
+ *
+ * Emits one immutable JSON object to s3://$DRX_S3_BUCKET/<journal-prefix>/...
+ * per file entity create/update/delete for the public:// and private://
+ * streams. Strict audit: any write failure aborts the surrounding
+ * Drupal request via an uncaught exception.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\file\FileInterface;
+
+/**
+ * Implements hook_help().
+ */
+function drx_s3_journal_help(string $route_name, RouteMatchInterface $route_match): string {
+  if ($route_name === 'help.page.drx_s3_journal') {
+    $prefix = (string) (getenv('DRX_S3_PREFIX_JOURNAL') ?: 'journal/v1');
+    $prefix = trim($prefix, '/');
+    if ($prefix === '') {
+      $prefix = 'journal/v1';
+    }
+    return '<p>' . t(
+      'Writes one immutable JSON event to the configured S3 bucket under the @prefix prefix on every file create/update/delete for public:// and private://. The journal is the source of truth for end-user content changes and is independent of the Drupal database.',
+      ['@prefix' => $prefix . '/'],
+    ) . '</p>';
+  }
+  return '';
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function drx_s3_journal_entity_insert(EntityInterface $entity): void {
+  if ($entity instanceof FileInterface) {
+    \Drupal::service('drx_s3_journal.journal')->record('create', $entity);
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function drx_s3_journal_entity_update(EntityInterface $entity): void {
+  if ($entity instanceof FileInterface) {
+    \Drupal::service('drx_s3_journal.journal')->record('update', $entity);
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ *
+ * Captures the journal record from the in-memory FileInterface before
+ * Drupal removes the row, so the event payload still has uri/filename/
+ * mime/size for replay.
+ */
+function drx_s3_journal_entity_delete(EntityInterface $entity): void {
+  if ($entity instanceof FileInterface) {
+    \Drupal::service('drx_s3_journal.journal')->record('delete', $entity);
+  }
+}

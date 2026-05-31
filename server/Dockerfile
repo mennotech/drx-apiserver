@@ -9,8 +9,8 @@
 ARG BASE_IMAGE=drx-apiserver:dev
 FROM ${BASE_IMAGE}
 
-# Project custom modules (Drupal scaffold installer paths handle the rest).
-COPY --chown=www-data:www-data modules/  /var/www/html/web/modules/custom/
+# Project contrib modules (Drupal scaffold installer paths handle the rest).
+COPY --chown=www-data:www-data modules/contrib/  /var/www/html/web/modules/contrib/
 
 # Config sync payload imported on boot via drx-init.
 COPY --chown=www-data:www-data config/   /var/www/html/config/sync/

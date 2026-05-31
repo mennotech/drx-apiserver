@@ -17,6 +17,10 @@ export DRUPAL_TRUSTED_HOSTS_PHP="${DRUPAL_SITE_DIR}/trusted-hosts.settings.php"
 export DRUPAL_CONFIG_SYNC_DIR="${DRUPAL_CONFIG_SYNC_DIR:-${DRUPAL_HTML_ROOT}/config/sync}"
 export DRUPAL_STATE_DIR="${DRUPAL_STATE_DIR:-/var/drupal-db}"
 export DRUPAL_CONFIG_HASH_FILE="${DRUPAL_STATE_DIR}/.config_hash"
+# Placeholder directory that satisfies Drupal's file_private_path requirement.
+# Nothing is actually written here when s3fs takes over private://; the
+# directory must simply exist and be writable by www-data.
+export DRUPAL_PRIVATE_FILES_PATH="${DRUPAL_PRIVATE_FILES_PATH:-/var/drupal-private}"
 
 # Database contract (sqlite-first; mysql/pgsql ready for future use).
 export DRUPAL_DB_DRIVER="${DRUPAL_DB_DRIVER:-sqlite}"
@@ -30,6 +34,42 @@ export DRUPAL_INSTALL_PROFILE="${DRUPAL_INSTALL_PROFILE:-minimal}"
 export BACKEND_URL="${BACKEND_URL:-http://localhost}"
 export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-}"
+export DRX_TIMEZONE="${DRX_TIMEZONE:-}"
+
+# -----------------------------------------------------------------------------
+# Shared S3 connection. Used by both Litestream (database replication) and
+# the Drupal file storage backend (user file uploads). One bucket, four
+# prefixes, one set of credentials.
+#
+# Layout inside the bucket:
+#   ${DRX_S3_PREFIX_LITESTREAM}/   Litestream replica  (no public access)
+#   ${DRX_S3_PREFIX_PRIVATE}/      Drupal private files (Drupal-gated)
+#   ${DRX_S3_PREFIX_PUBLIC}/       Drupal public files  (anonymous read via
+#                                  bucket policy on this prefix only)
+#   ${DRX_S3_PREFIX_JOURNAL}/      Immutable file-change journal events
+#
+# Security posture: private by default. Public access exists only because
+# the bucket policy explicitly grants s3:GetObject on the public prefix;
+# any other path is deny-by-default.
+#
+# DRX_S3_REQUIRED is the master switch:
+#   1 (default) — production posture. Bootstrap validates env + connectivity
+#                 and refuses to start when S3 is misconfigured or unreachable.
+#   0           — CI/build escape hatch. Skips validation and connectivity
+#                 probe so the image can boot without a live S3 backend.
+# -----------------------------------------------------------------------------
+export DRX_S3_REQUIRED="${DRX_S3_REQUIRED:-1}"
+export DRX_S3_BUCKET="${DRX_S3_BUCKET:-}"
+export DRX_S3_REGION="${DRX_S3_REGION:-us-east-1}"
+export DRX_S3_ENDPOINT="${DRX_S3_ENDPOINT:-}"
+export DRX_S3_FORCE_PATH_STYLE="${DRX_S3_FORCE_PATH_STYLE:-}"
+export DRX_S3_ACCESS_KEY_ID="${DRX_S3_ACCESS_KEY_ID:-}"
+export DRX_S3_SECRET_ACCESS_KEY="${DRX_S3_SECRET_ACCESS_KEY:-}"
+export DRX_S3_PREFIX_LITESTREAM="${DRX_S3_PREFIX_LITESTREAM:-litestream}"
+export DRX_S3_PREFIX_PRIVATE="${DRX_S3_PREFIX_PRIVATE:-private}"
+export DRX_S3_PREFIX_PUBLIC="${DRX_S3_PREFIX_PUBLIC:-public}"
+export DRX_S3_PREFIX_JOURNAL="${DRX_S3_PREFIX_JOURNAL:-journal/v1}"
+export DRX_S3_PUBLIC_HOST="${DRX_S3_PUBLIC_HOST:-}"
 
 # Module/API contract. Secure-by-default: read-only JSON:API.
 export DRUPAL_BASE_MODULES="${DRUPAL_BASE_MODULES:-config jsonapi serialization basic_auth rest}"
@@ -40,9 +80,52 @@ export DRUPAL_JSONAPI_READ_ONLY="${DRUPAL_JSONAPI_READ_ONLY:-1}"
 # and the BACKEND_URL host are always added.
 export DRUPAL_TRUSTED_HOST_PATTERNS="${DRUPAL_TRUSTED_HOST_PATTERNS:-}"
 
+# Litestream (SQLite backup/restore). Enablement is derived internally from
+# the shared S3 contract: when DRX_S3_REQUIRED=1 and DRX_S3_BUCKET is set,
+# bootstrap enables Litestream automatically; when S3 is bypassed
+# (DRX_S3_REQUIRED=0), Litestream is disabled. When enabled, bootstrap
+# renders /etc/litestream.yml from these vars (unless
+# DRX_LITESTREAM_CONFIG_FILE points at an operator-provided config), runs a
+# restore-before-install on first boot, and wraps Apache with
+# `litestream replicate --exec` for ongoing replication.
+#
+# Replica destination and credentials come from the shared S3 contract:
+# DRX_S3_BUCKET / DRX_S3_PREFIX_LITESTREAM / DRX_S3_ACCESS_KEY_ID /
+# DRX_S3_SECRET_ACCESS_KEY. lib/s3.sh derives the effective Litestream
+# settings from those values.
+#
+# NOTE: DRX_LITESTREAM_ENABLED is intentionally not user-facing; it is set
+# internally by lib/s3.sh::bridge_litestream as a derived runtime flag.
+export DRX_LITESTREAM_ENABLED="${DRX_LITESTREAM_ENABLED:-0}"
+export DRX_LITESTREAM_SYNC_INTERVAL="${DRX_LITESTREAM_SYNC_INTERVAL:-1s}"
+# Restore policy: if-empty (default) | always | never.
+#   if-empty: restore only when the SQLite file is missing or has no tables
+#   always:   restore on every boot (destructive; overwrites local DB)
+#   never:    skip restore entirely (writer adopts existing local DB)
+export DRX_LITESTREAM_RESTORE_ON_BOOT="${DRX_LITESTREAM_RESTORE_ON_BOOT:-if-empty}"
+# Operator escape hatch: if set and the file exists, used verbatim instead
+# of the generated config. The path must be readable inside the container.
+export DRX_LITESTREAM_CONFIG_FILE="${DRX_LITESTREAM_CONFIG_FILE:-/etc/litestream.yml}"
+# Point-in-time pinning for restore (optional, mutually exclusive; TXID
+# wins if both are set). Typically supplied from a drx_litestream marker
+# export to reproduce an exact state on a dev/test machine. Honoured
+# regardless of restore policy when restore actually runs.
+export DRX_LITESTREAM_RESTORE_TXID="${DRX_LITESTREAM_RESTORE_TXID:-}"
+export DRX_LITESTREAM_RESTORE_TIMESTAMP="${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}"
+# Litestream control socket. The replicate daemon listens here for
+# `litestream sync`, `litestream info`, etc. The orchestrator running
+# inside Drupal uses this to flush pending WAL frames to S3 before
+# reading the LTX TXID for application-consistent snapshots. Set to
+# an empty string to disable the socket entirely (snapshots will fall
+# back to polling sync-interval, but with no force-flush capability).
+export DRX_LITESTREAM_CONTROL_SOCKET="${DRX_LITESTREAM_CONTROL_SOCKET-/var/run/litestream.sock}"
+export DRX_LITESTREAM_CONTROL_SOCKET_PERMS="${DRX_LITESTREAM_CONTROL_SOCKET_PERMS:-0666}"
+
 # Logging ---------------------------------------------------------------------
 drx::log()  { printf '[drx] %s\n' "$*" >&2; }
+# Emit a non-fatal warning to stderr with the standard [drx] prefix.
 drx::warn() { printf '[drx] WARN: %s\n' "$*" >&2; }
+# Emit a fatal error to stderr and exit the orchestrator with status 1.
 drx::die()  { printf '[drx] ERROR: %s\n' "$*" >&2; exit 1; }
 
 # Run as the www-data user; never run drush/composer as root in normal flows.
@@ -50,6 +133,7 @@ drx::as_www() {
     sudo -E -u www-data "$@"
 }
 
+# Invoke drush as www-data against the configured Drupal root.
 drx::drush() {
     drx::as_www "${DRUSH}" --root="${DRUPAL_ROOT}" "$@"
 }
@@ -86,6 +170,8 @@ drx::normalize_hostname() {
     printf '%s' "${raw}"
 }
 
+# Normalize an origin (scheme://host) string, falling back to a caller-supplied
+# default when the input is empty. Strips paths, query strings, and fragments.
 drx::normalize_origin() {
     local raw="$1"
     local default="$2"
@@ -99,6 +185,7 @@ drx::normalize_origin() {
     printf '%s://%s' "${scheme}" "${raw}"
 }
 
+# Escape a string so it can be safely embedded inside a basic ERE / sed pattern.
 drx::escape_regex() {
     printf '%s' "$1" | sed -e 's/[][\\/.^$*+?(){}|]/\\&/g'
 }

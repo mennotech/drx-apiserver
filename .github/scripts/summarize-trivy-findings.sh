@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Purpose: summarize a Trivy JSON scan report into the GitHub Step Summary
+# and per-severity counts consumed by the release workflow.
 set -euo pipefail
 
 if [[ -z "${ARTIFACT_NAME:-}" ]]; then

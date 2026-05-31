@@ -1,0 +1,17 @@
+services:
+  drx_s3_journal.writer:
+    class: Drupal\drx_s3_journal\Service\JournalWriter
+    arguments:
+      - '@http_client'
+
+  drx_s3_journal.journal:
+    class: Drupal\drx_s3_journal\Service\Journal
+    arguments:
+      - '@drx_s3_journal.writer'
+      - '@database'
+      - '@current_user'
+      - '@request_stack'
+      - '@current_route_match'
+      - '@uuid'
+      - '@datetime.time'
+      - '@logger.factory'

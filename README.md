@@ -45,8 +45,8 @@ Pin to an immutable tag in production:
 ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
-# Custom modules, config sync payload, lifecycle hooks.
-COPY --chown=www-data:www-data modules/ /var/www/html/web/modules/custom/
+# Contrib modules, config sync payload, lifecycle hooks.
+COPY --chown=www-data:www-data modules/contrib/ /var/www/html/web/modules/contrib/
 COPY --chown=www-data:www-data config/  /var/www/html/config/
 COPY --chmod=0755 hooks/                /etc/drx/hooks/
 ```
@@ -80,7 +80,20 @@ Local orchestration is via [Makefile](Makefile):
 | `make up-base` | Run only the base image (no reference overlay).      |
 | `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
+| `make smoke-stack` | Boot the full compose stack (app + MinIO), wait for healthcheck, and assert the seeded JSON:API endpoint returns the expected notes. Recommended pre-push check for changes under [server/](server/) or the bootstrap pipeline. |
+| `make scan` | Run the same Trivy scan CI runs (HIGH/CRITICAL, ignore-unfixed). |
+| `make verify` | `make smoke` + `make scan`; the minimum check before `git push` for `base/` changes. |
+| `make lint-drupal` | Run Drupal coding standards (Drupal + DrupalPractice) for contrib module code under [server/modules/contrib](server/modules/contrib). |
+| `make lint-shell` | Run tiered ShellCheck policy (core + hooks). |
+| `make lint-shell-core` | Run strict ShellCheck profile for core scripts in [.github/scripts](.github/scripts) and [base](base). |
+| `make lint-shell-hooks` | Run hook profile for lifecycle scripts in [server/hooks](server/hooks). |
+| `make lint-shell-docs` | Enforce shell documentation policy (file-level + function-level by default; `STRICT=0` to demote function-level gaps to warnings). |
+| `make dr-drill` | Run a local disaster-recovery drill (write DB+file markers, recreate backend, restore from litestream/S3). |
+| `make pit-drill` | Run a local point-in-time drill (TXID-pinned restore against the MinIO replica). |
+| `make snapshot-drill` | Run a local application-consistent snapshot drill (`drx_litestream`). |
 | `make clean` | Remove build artifacts and local image tags.            |
+
+Shell path policy is documented in [SHELL_POLICY.md](SHELL_POLICY.md).
 
 Override `VERSION`, `BASE_IMAGE`, `APP_IMAGE`, or `SMOKE_PORT` on the
 command line if needed, e.g. `make base VERSION=0.2.0-dev`.
@@ -147,8 +160,24 @@ overridable variables.
    [base/CHANGELOG.md](base/CHANGELOG.md) under `[Unreleased]`.
 3. Keep repository-level changes (CI, docs, tooling, Makefile) documented
    in [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`.
-4. CI must pass: smoke boot, Trivy scan, multi-arch build.
-5. For release procedure, see [RELEASES.md#release-procedure](RELEASES.md#release-procedure).
+4. Run the relevant lint checks before opening a PR (they all run in
+   CI as well, so failing locally first keeps the feedback loop short):
+   - `make lint-shell` and `make lint-shell-docs` whenever you touch
+     any shell script under [.github/scripts](.github/scripts),
+     [base](base), or [server/hooks](server/hooks). Shell policy is
+     documented in [SHELL_POLICY.md](SHELL_POLICY.md).
+   - `make lint-drupal` whenever you touch PHP under
+    [server/modules/contrib](server/modules/contrib). Use
+     `make lint-drupal-fix` to auto-correct fixable findings.
+   - `make smoke` whenever you touch anything under [base/](base/) or
+     the bootstrap library.
+   - `make smoke-stack` whenever you touch anything under
+     [server/](server/) or the bootstrap pipeline (compose, hooks,
+     overlay modules, seeded config). This is the recommended
+     pre-push check for overlay changes.
+5. CI must pass: smoke boot, smoke-stack, Trivy scan, multi-arch
+   build, Drupal + shell lint.
+6. For release procedure, see [RELEASES.md#release-procedure](RELEASES.md#release-procedure).
 
 ---
 

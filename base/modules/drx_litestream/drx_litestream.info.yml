@@ -1,0 +1,6 @@
+name: 'DrX Litestream'
+type: module
+description: 'Replication health dashboard and point-in-time restore markers for litestream-backed SQLite databases.'
+package: 'DrX'
+core_version_requirement: ^10 || ^11
+configure: drx_litestream.health

@@ -4,7 +4,7 @@ A reusable, production-oriented Drupal 10 base image for projects that use
 Drupal as the data + auth + security backend behind a decoupled frontend.
 
 This image is deliberately neutral: no project-specific modules, branding,
-config payload, or platform-specific deployment behaviour is baked in.
+config payload, or platform-specific deployment behaviour is baked in. It does, however, include base modules for S3 and snapshot orchestration.
 Downstream projects extend it through documented extension points.
 
 ---
@@ -34,8 +34,8 @@ Downstream projects extend it through documented extension points.
 - It does not assume a deployment platform. Fly.io, Kubernetes, Compose,
   Nomad, etc. are all supported through the same env contract; example
   overlays live with downstream projects, not in this base image.
-- It does not bundle any project's custom modules, content types, or
-  config sync payload.
+- It does not bundle any project's contributed modules, content types, or
+  config sync payload. Only the base modules for S3 and snapshot orchestration are included.
 
 ---
 
@@ -139,6 +139,142 @@ RUN echo 'memory_limit = 512M' > /usr/local/etc/php/conf.d/99-overrides.ini
 | `DRX_HEALTHCHECK_PORT` | `80`  | Healthcheck target port.                                    |
 | `DRX_HEALTHCHECK_PATH` | `/user/login_status?_format=json` | Healthcheck target path.        |
 
+### Site timezone
+
+| Variable | Default | Notes |
+| -------- | ------- | ----- |
+| `DRX_TIMEZONE` | _(unset)_ | Sets the Drupal site timezone. If unset during a fresh install, the bootstrap tries a public-IP lookup once and falls back to `UTC`. On later boots, the site config is only updated when this env var differs from the current Drupal config. |
+
+### Shared S3 storage (mandatory by default)
+
+The image treats S3 as the source of truth for user content and (when
+Litestream is enabled) the database replica. The container filesystem is
+treated as ephemeral. One bucket and one credential pair are shared
+between Litestream and Drupal's file backend (`drupal/s3fs`); four
+prefixes separate concerns inside the bucket:
+
+| Prefix                                | Contents                       | Visibility                                              |
+| ------------------------------------- | ------------------------------ | ------------------------------------------------------- |
+| `${DRX_S3_PREFIX_LITESTREAM}/`        | Litestream SQLite replica      | Private. Never exposed.                                  |
+| `${DRX_S3_PREFIX_PRIVATE}/`           | Drupal **private://** files    | Private. Streamed through Drupal access checks.          |
+| `${DRX_S3_PREFIX_PUBLIC}/`            | Drupal **public://** files     | Anonymous read, via an explicit bucket policy on this prefix only. |
+| `${DRX_S3_PREFIX_JOURNAL}/`           | Immutable file-change journal  | Private. Used by `drx_s3_journal` when present in downstream overlays. |
+
+Security posture is **private by default**. Public access exists only
+because the bucket policy explicitly grants `s3:GetObject` on the public
+prefix; any other path is deny-by-default. Field-level privacy is still
+honoured — file/image fields marked private upload into the private
+prefix and require a Drupal-issued URL to read.
+
+Bucket versioning is required when `DRX_S3_REQUIRED=1`. Bootstrap now
+checks versioning at startup and fails fast if the bucket is un-versioned,
+because Litestream-based DR workflows depend on object version history.
+
+`DRX_S3_REQUIRED=1` (default) blocks boot unless the env contract is
+populated and a SigV4-signed `HEAD bucket` probe succeeds. Set
+`DRX_S3_REQUIRED=0` only for CI smoke tests where no live S3 is
+available; in that mode `drupal/s3fs` is left disabled and uploads fall
+back to the local filesystem.
+
+Production posture: set `DRX_S3_BUCKET` explicitly (for example via your
+deployment environment or IaC). The base image intentionally does not
+default this variable when S3 is required. The reference local compose
+overlay provides a dev-only fallback of `drx-data-local`.
+
+| Variable                          | Default       | Notes                                                                                 |
+| --------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
+| `DRX_S3_REQUIRED`                 | `1`           | Master switch. `0` disables validation, probe, and `s3fs` module enable.              |
+| `DRX_S3_BUCKET`                   | _(unset)_     | **Required when enabled.** Single bucket shared by all four prefixes.                 |
+| `DRX_S3_REGION`                   | `us-east-1`   | S3 region.                                                                            |
+| `DRX_S3_ENDPOINT`                 | _(unset)_     | Optional. Custom endpoint for MinIO / S3-compatible stores.                           |
+| `DRX_S3_PUBLIC_HOST`              | _(unset)_     | Optional. Browser-facing `host[:port]` for public file URLs (s3fs CNAME). Must use a hostname different from the Drupal site host — Drupal's file URL generator compares hosts without ports, so `localhost:9000` against a site on `localhost:8088` is still treated as local and rewritten to an internal path. Use a distinct dev alias like `minio.127.0.0.1.nip.io:9000` or a hosts-file entry. |
+| `DRX_S3_FORCE_PATH_STYLE`         | _(auto)_      | Auto `true` when an endpoint is set, otherwise `false`. Override with `true`/`false`. |
+| `DRX_S3_ACCESS_KEY_ID`            | _(unset)_     | **Required when enabled.** Canonical S3 access key used by both s3fs and Litestream. |
+| `DRX_S3_SECRET_ACCESS_KEY`        | _(unset)_     | **Required when enabled.**                                                            |
+| `DRX_S3_PREFIX_LITESTREAM`        | `litestream`  | Prefix for Litestream replicas.                                                       |
+| `DRX_S3_PREFIX_PRIVATE`           | `private`     | Prefix for Drupal private files.                                                      |
+| `DRX_S3_PREFIX_PUBLIC`            | `public`      | Prefix for Drupal public files (must be matched by the bucket policy below).          |
+| `DRX_S3_PREFIX_JOURNAL`           | `journal/v1`  | Prefix for immutable file-change journal events (used by downstream `drx_s3_journal`). |
+
+#### Bucket policy (AWS S3)
+
+The bucket must use **Bucket owner enforced** ownership (ACLs disabled).
+Leave "Block public bucket policies" **off** in Block Public Access, then
+attach this policy (replacing `<bucket>` and `<DRX_S3_PREFIX_PUBLIC>`):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowPublicReadOnPublicPrefix",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::<bucket>/<DRX_S3_PREFIX_PUBLIC>/*"
+    }
+  ]
+}
+```
+
+For local MinIO, the equivalent is:
+
+```sh
+mc version enable local/<bucket>
+mc anonymous set download local/<bucket>/<DRX_S3_PREFIX_PUBLIC>
+```
+
+### Litestream backup / restore (SQLite only)
+
+The image bundles the pinned `litestream` binary at
+`/usr/local/bin/litestream` and integrates it into bootstrap. The
+feature is derived from the shared S3 contract: when
+`DRX_S3_REQUIRED=1` with a valid bucket/credentials, Litestream is on;
+when `DRX_S3_REQUIRED=0`, Litestream is off.
+`DRX_LITESTREAM_*` endpoint/region/path-style are taken from the
+`DRX_S3_*` values and Litestream credentials are always bridged from
+`DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`, so one set of
+vars covers both replication and file storage. The replica URL is
+derived from `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
+
+When enabled, the bootstrap:
+
+1. Renders `/etc/litestream.yml` from the `DRX_LITESTREAM_*` env vars
+   (or leaves an operator-supplied file alone if it already exists).
+2. Runs `litestream restore` before Drupal install detection, honouring
+   `DRX_LITESTREAM_RESTORE_ON_BOOT` and any point-in-time pin.
+3. Wraps the final `exec` line as
+   `litestream replicate -config /etc/litestream.yml -exec "<CMD>"`,
+   so the process tree becomes
+   `tini → drx-init → litestream → <CMD>` (typically Apache).
+   Litestream forwards signals and performs a final WAL checkpoint plus
+   replica sync on graceful shutdown (SIGTERM).
+
+Only the SQLite driver is replicated; `DRUPAL_DB_DRIVER=mysql|pgsql`
+ignores these settings.
+
+| Variable                              | Default              | Notes                                                                                 |
+| ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
+| `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
+| `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
+| `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |
+| `DRX_LITESTREAM_RESTORE_TXID`         | _(unset)_            | Optional hex TXID to pin the restore at (e.g. taken from a marker export).            |
+| `DRX_LITESTREAM_RESTORE_TIMESTAMP`    | _(unset)_            | Optional RFC3339 timestamp. Mutually exclusive with `_RESTORE_TXID`; TXID wins.       |
+| `DRX_LITESTREAM_CLEAR_MAINTENANCE`    | `1`                  | After a successful restore, clear `system.maintenance_mode` from the restored DB before Apache starts. Set to `0` to leave whatever value was in the snapshot in place (useful when restoring deliberately into maintenance). |
+| `DRX_LITESTREAM_CONTROL_SOCKET`       | `/var/run/litestream.sock` | Path of the litestream daemon's control socket. Used by snapshot tooling running as a non-root user inside the container to call `litestream sync` / `litestream info`. Set to an empty string to disable the socket. |
+| `DRX_LITESTREAM_CONTROL_SOCKET_PERMS` | `0666`               | File mode on the control socket. `0666` lets the orchestrator (running as `www-data`) connect without extra chown plumbing; the socket only exposes intra-container RPCs so this is acceptable. |
+
+The image does not source cloud-provider credential helpers; provide
+`DRX_S3_ACCESS_KEY_ID` and `DRX_S3_SECRET_ACCESS_KEY` directly via your
+deployment platform.
+
+The base image only provides the runtime contract. Operator-facing UI
+(replication health dashboard, point-in-time marker capture and export)
+lives in the first-party `drx_litestream` module that ships with the
+image at
+[base/modules/drx_litestream](modules/drx_litestream); the reference
+overlay enables it via [server/hooks/post-modules.d/30-enable-drx-litestream.sh](../server/hooks/post-modules.d/30-enable-drx-litestream.sh).
+
 ---
 
 ## Filesystem contract
@@ -193,7 +329,10 @@ A non-zero exit from a hook aborts bootstrap.
 ARG BASE_IMAGE=ghcr.io/mennotech/drx-apiserver:0.1.0
 FROM ${BASE_IMAGE}
 
-# Custom modules.
+# Project custom modules. The base image owns web/modules/base/ for its
+# first-party modules (drx_litestream, drx_s3_journal); downstream
+# projects should use web/modules/custom/ (or web/modules/contrib/ for
+# unmodified contrib drop-ins) to keep the namespaces separate.
 COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/custom/
 
 # Project config sync payload.
@@ -208,7 +347,6 @@ Downstream projects should:
 1. Pin `BASE_IMAGE` to an immutable `X.Y.Z` tag in production.
 2. Track the base image's changelog for contract changes before bumping.
 3. Keep deployment platform specifics (Fly.io secrets, K8s manifests,
-   Compose files) in their own repo, not inside the base image.
 
 ---
 

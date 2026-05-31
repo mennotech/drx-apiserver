@@ -1,0 +1,38 @@
+services:
+  drx_litestream.status:
+    class: Drupal\drx_litestream\Service\LitestreamStatus
+    arguments: ['@logger.factory']
+  drx_litestream.markers:
+    class: Drupal\drx_litestream\Service\MarkerManager
+    arguments: ['@database', '@current_user', '@uuid', '@datetime.time']
+  drx_litestream.remote_replica:
+    class: Drupal\drx_litestream\Service\RemoteReplica
+    arguments:
+      - '@drx_litestream.status'
+      - '@cache.default'
+      - '@http_client'
+      - '@logger.factory'
+      - '@datetime.time'
+  drx_litestream.snapshot_manifest_writer:
+    class: Drupal\drx_litestream\Service\SnapshotManifestWriter
+    arguments:
+      - '@drx_litestream.status'
+      - '@http_client'
+      - '@logger.factory'
+      - '@datetime.time'
+  drx_litestream.snapshot_orchestrator:
+    class: Drupal\drx_litestream\Service\SnapshotOrchestrator
+    arguments:
+      - '@drx_litestream.markers'
+      - '@drx_litestream.status'
+      - '@drx_litestream.snapshot_manifest_writer'
+      - '@state'
+      - '@lock'
+      - '@datetime.time'
+      - '@config.factory'
+      - '@logger.factory'
+      - '@?drx_s3_journal.journal'
+  drx_litestream.api_access:
+    class: Drupal\drx_litestream\Access\ApiTokenAccessCheck
+    tags:
+      - { name: access_check, applies_to: _drx_litestream_api_token }

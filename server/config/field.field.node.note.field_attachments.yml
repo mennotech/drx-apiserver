@@ -1,0 +1,26 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_attachments
+    - node.type.note
+  module:
+    - file
+id: node.note.field_attachments
+field_name: field_attachments
+entity_type: node
+bundle: note
+label: Attachments
+description: 'Section: Note Content'
+required: false
+translatable: false
+default_value: {}
+default_value_callback: ''
+settings:
+  handler: 'default:file'
+  handler_settings: {}
+  file_directory: 'note-attachments/[date:custom:Y-m]'
+  file_extensions: 'txt pdf'
+  max_filesize: ''
+  description_field: true
+field_type: file

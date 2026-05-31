@@ -7,6 +7,7 @@
 #                                 modules whose install hooks reference
 #                                 entities created by config/sync).
 
+# Internal: enable the given module list via drush, logging under "${label}".
 drx::modules::_enable_list() {
     local label="$1"; shift
     local modules=("$@")
@@ -16,12 +17,14 @@ drx::modules::_enable_list() {
         drx::warn "One or more ${label} modules failed to enable"
 }
 
+# Enable the base module set from DRUPAL_BASE_MODULES (space-separated).
 drx::modules::enable_base() {
     # shellcheck disable=SC2206
     local mods=( ${DRUPAL_BASE_MODULES} )
     drx::modules::_enable_list base "${mods[@]}"
 }
 
+# Enable the optional extra module set from DRUPAL_EXTRA_MODULES (space-separated).
 drx::modules::enable_extras() {
     # shellcheck disable=SC2206
     local mods=( ${DRUPAL_EXTRA_MODULES} )

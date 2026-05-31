@@ -1,0 +1,7 @@
+name: 'DrX S3 Journal'
+type: module
+description: 'Append-only S3 journal of Drupal public:// and private:// file changes (one immutable object per event, time-partitioned for point-in-time replay).'
+package: 'DrX'
+core_version_requirement: ^10 || ^11
+dependencies:
+  - drupal:file

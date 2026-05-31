@@ -17,6 +17,291 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Fixed
+
+- [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  now also triggers on `pull_request` with the same paths filter, so
+  PRs (including from forks) get a dedicated PHPCS check matching the
+  changelog description.
+- [base/.gitattributes](base/.gitattributes) no longer classifies
+  `*.sh` as PHP for GitHub Linguist / diff highlighting; shell scripts
+  are tagged `diff=bash linguist-language=shell`.
+- `make lint-drupal` ([Makefile](Makefile)) and
+  [phpcs.xml.dist](phpcs.xml.dist) now lint
+  [base/modules](base/modules) (where `drx_litestream` and
+  `drx_s3_journal` live after the recent move) in addition to
+  [server/modules](server/modules); the previous configuration
+  pointed at the now-empty `server/modules/contrib/` and was a no-op.
+  [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  trigger paths and [AGENTS.md](AGENTS.md) `make lint-drupal`
+  guidance were updated to match.
+- [server/README.md](server/README.md) Litestream admin-UI section now
+  links to the first-party module under
+  [base/modules/drx_litestream/](base/modules/drx_litestream/) instead
+  of the removed `server/modules/contrib/drx_litestream/` path.
+- [server/hooks/post-modules.d/40-drush-updatedb.sh](server/hooks/post-modules.d/40-drush-updatedb.sh)
+  now uses the `drx::drush` helper instead of hard-coding
+  `/var/www/html/vendor/bin/drush` and `--root=/var/www/html/web`, so
+  the hook tracks the base bootstrap's runtime contract
+  (`DRUPAL_ROOT`, `DRUSH`) and matches the pattern used by sibling
+  hooks.
+- [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml)
+  now also runs on `pull_request` targeting `main`, so supported-image
+  Trivy SARIF categories are present during PR code scanning and no
+  longer show as missing configuration (`neutral`) when compared to
+  `main`.
+
+### Changed
+
+- Hardened [Makefile](Makefile) `make smoke-stack` admin-password handling:
+  it now treats `DRUPAL_ADMIN_PASS` as the only input, generates a
+  strong ephemeral password when it is not provided, and keeps the
+  value hidden by default (opt-in reveal via
+  `SHOW_ADMIN_PASS=1`).
+- Added a global [Makefile](Makefile) `SHOW_ADMIN_PASS=1` toggle so
+  up-oriented targets can reveal the active admin password on demand
+  (`make up`, `make up-base`, `make smoke-stack`) while remaining
+  hidden by default.
+- Standardized local boot targets on `DRUPAL_ADMIN_PASS` as the single
+  Drupal admin password variable: removed Makefile-specific
+  `BASE_UP_ADMIN_PASS` and replaced hardcoded smoke passwords with
+  generated ephemeral values when `DRUPAL_ADMIN_PASS` is unset.
+- Updated [.github/workflows/smoke-stack.yml](.github/workflows/smoke-stack.yml)
+  to stop hardcoding a static CI admin password; CI now uses the
+  Makefile-generated ephemeral password unless explicitly overridden.
+- Adopted Drupal coding standards for custom app code by adding
+  [phpcs.xml.dist](phpcs.xml.dist) (Drupal + DrupalPractice rules) and a
+  containerized [Makefile](Makefile) `make lint-drupal` target that runs
+  PHPCS against [server/modules/contrib](server/modules/contrib) without
+  requiring host PHP/Composer tooling; added
+  [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
+  to enforce the same check on push and pull request changes.
+- Added a containerized [Makefile](Makefile) `make lint-shell` target that
+  runs ShellCheck for repository shell scripts under [base](base),
+  [server](server), and [.github](.github).
+- Split shell linting into path-scoped policy tiers documented in
+  [SHELL_POLICY.md](SHELL_POLICY.md):
+  [Makefile](Makefile) now provides `make lint-shell-core` for strict
+  checks on [.github/scripts](.github/scripts) + [base](base) and
+  `make lint-shell-hooks` for [server/hooks](server/hooks), with
+  `make lint-shell` running both profiles.
+- Added a shell documentation policy checker
+  ([.github/scripts/lint-shell-docs.sh](.github/scripts/lint-shell-docs.sh))
+  exposed via [Makefile](Makefile) `make lint-shell-docs`: enforces a
+  shebang + purpose comment per file and requires preceding doc
+  comments on `drx::*` public functions. Defaults to strict mode; pass
+  `STRICT=0` to demote function-level gaps to warnings. Wired into
+  [.github/workflows/shell-lint.yml](.github/workflows/shell-lint.yml)
+  and documented in [SHELL_POLICY.md](SHELL_POLICY.md).
+
+## [2026-05-29] (drx-apiserver v0.0.5-rc5)
+
+### Added
+
+#### S3-backed content-change journal (drx_s3_journal base module)
+- New base module
+  [drx_s3_journal](base/modules/drx_s3_journal/) that writes
+  one immutable JSON object per Drupal file create/update/delete to
+  `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_JOURNAL}/YYYY/MM/DD/HH/<TS>_<event_id>_<op>_<scope>_<fid>.json`,
+  scoped to the `public://` and `private://` streams only. The
+  lexicographic key layout is the replay contract: listing the bucket
+  from any hourly prefix yields events in chronological order.
+- Strict-audit semantics: write failures throw, which aborts the
+  surrounding Drupal request so no content mutation is confirmed
+  without a durable journal record.
+- Direct AWS SigV4 PUT via Guzzle (no Drupal stream wrappers, no
+  s3fs roundtrip) to avoid the recursion that would result from
+  journaling a journal write. Sends `If-None-Match: *` so retried
+  event IDs become harmless 412s instead of silent overwrites.
+- Drush helpers:
+  `drush drx:s3-journal:prefix --since=<ts>` prints the S3 prefix to
+  resume replay from; `drush drx:s3-journal:test` emits a synthetic
+  event to verify credentials + bucket policy.
+- The module no-ops silently when `DRX_S3_REQUIRED=0` (CI/smoke) and
+  is enabled on boot via
+  [server/hooks/post-modules.d/35-enable-drx-s3-journal.sh](server/hooks/post-modules.d/35-enable-drx-s3-journal.sh).
+
+#### Notes app attachments field + seeded examples
+- Added `field_attachments` (file, multi-value) to the reference
+  `note` content type scaffold in [server/schema/notes.yml](server/schema/notes.yml)
+  and the generated Drupal config payload under [server/config/](server/config/).
+- Attachment uploads are routed to a dedicated
+  `public://note-attachments/YYYY-MM/` directory layout.
+- Updated note form/display config so attachments are editable and
+  rendered in the default view mode.
+- Updated the first-boot notes seed hook
+  [server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh)
+  to attach one sample `.txt` file to the first note and one sample
+  `.pdf` file to the second note.
+
+#### S3 contract defaults (prod vs dev)
+- Clarified and documented the S3 bucket contract split:
+  production keeps `DRX_S3_BUCKET` explicit and required when
+  `DRX_S3_REQUIRED=1`, while the reference local overlay provides a
+  dev-only fallback bucket (`drx-data-local`) for quick starts.
+- Updated local defaults in [server/docker-compose.yml](server/docker-compose.yml)
+  and [.env.example](.env.example) from `drx-backups` to
+  `drx-data-local`, including the litestream replica URL.
+- Updated [server/docker-compose.yml](server/docker-compose.yml)
+  `minio-init` to enable bucket versioning for the local dev bucket on
+  startup.
+- Removed local Drupal file/DB named volumes from
+  [server/docker-compose.yml](server/docker-compose.yml). The reference
+  stack now persists only MinIO data; Drupal local storage is ephemeral
+  and restored via Litestream/S3 on container recreate.
+- Updated [base/README.md](base/README.md) and
+  [server/README.md](server/README.md) to reflect the production-required
+  bucket and local fallback naming.
+
+#### Smoke-stack test
+- Added `make smoke-stack` to [Makefile](Makefile): boots the full
+  reference compose stack (drx-apiserver + MinIO + bucket initialiser)
+  with the production S3 posture (no `DRX_S3_REQUIRED=0` escape hatch),
+  waits for the backend healthcheck, and asserts the bootstrap log
+  shows a successful S3 probe + `s3fs` module enable plus that
+  `GET /jsonapi/node/note` returns the three seeded notes. Tears the
+  stack down on success and failure.
+- Added [.github/workflows/smoke-stack.yml](.github/workflows/smoke-stack.yml):
+  runs `make smoke-stack` on every push and pull request that touches
+  `base/`, `server/`, the `Makefile`, or the workflow itself.
+
+#### Local DR drill workflow
+- Added `make dr-drill` to [Makefile](Makefile), a local disaster-recovery
+  verification target for the reference stack that writes a DB marker,
+  stops the app gracefully, removes the local SQLite volume, boots the app,
+  and asserts the marker is restored from Litestream/MinIO.
+- Added `make pit-drill` to [Makefile](Makefile), a local point-in-time
+  verification target that captures the replica TXID after marker A,
+  overwrites the row with marker B, then boots a fresh sidecar container
+  pinned via `DRX_LITESTREAM_RESTORE_TXID` and asserts the restored DB
+  shows marker A.
+- Updated [.env.example](.env.example) with local Litestream/MinIO defaults
+  used by [server/docker-compose.yml](server/docker-compose.yml) so the DR
+  drill and replication-health module work out of the box.
+- Updated the local target table in [README.md](README.md) to include
+  `make dr-drill` and `make pit-drill`.
+- Documented the litestream runtime contract in
+  [base/README.md](base/README.md#litestream-backup--restore-sqlite-only)
+  and the admin / dev-restore workflow in
+  [server/README.md](server/README.md#litestream-replication-admin-ui-and-dev-restore).
+
+#### Application-consistent snapshots (drx_litestream base module)
+- `drx_litestream` now captures **application-consistent** point-in-time
+  markers via a new `SnapshotOrchestrator` service. The orchestrator
+  acquires Drupal's core `cron` lock (the same lock `\Drupal\Core\Cron::run()`
+  itself holds — every cron invocation short-circuits while the snapshot
+  runs), enables maintenance mode, drains briefly, nudges the SQLite
+  WAL forward with a non-blocking `PRAGMA wal_checkpoint(PASSIVE)`,
+  waits for the Litestream replica to reach the post-checkpoint TXID,
+  writes the marker row, and waits one more time so the marker UPDATE
+  itself is on the replica. Maintenance mode and the cron lock are
+  released in `finally`, and SIGINT/SIGTERM handlers run the same
+  cleanup on hard termination.
+- Marker schema bumped to v2 in
+  [drx_litestream.install](base/modules/drx_litestream/drx_litestream.install)
+  (`hook_update_9001`): new columns `kind` (`live`/`consistent`),
+  `consistent_at`, `bucket`, `s3_endpoint`, `s3_region`, the three
+  prefix columns, `base_image_ref`, `drupal_site_uuid`, and
+  `verify_state`/`verify_error`/`verified_at`. Existing rows backfill
+  to `kind='live'`.
+- Exported marker JSON (schema `drx-litestream-marker/v2`) now includes
+  a full `source` block (bucket + endpoint + region + prefixes + base
+  image ref + site UUID) and a `consistent_at` wall-clock pin, making
+  the marker a self-contained restore recipe. The dev_restore_hint
+  documents the bucket-clone-at-`consistent_at` step required for full
+  DB-plus-files point-in-time restore.
+- New admin route `/admin/config/drx/litestream/markers/snapshot`
+  (form: `SnapshotForm`) and a "Capture consistent snapshot" primary
+  button on the markers list page, alongside the existing live capture.
+- New drush command `drush drx:litestream:snapshot --label=<label>`
+  (alias `drx-lit-snap`) that runs the orchestrator and prints the
+  captured TXID on stdout. Uses Drush 12's static `create(ContainerInterface)`
+  DI pattern; no `drush.services.yml` file is needed.
+- Tunable env vars for the orchestrator (all optional):
+  `DRX_LITESTREAM_SNAPSHOT_DRAIN_SECS` (default `3`),
+  `DRX_LITESTREAM_SNAPSHOT_TIMEOUT` (replica catch-up, default `30`),
+  `DRX_LITESTREAM_SNAPSHOT_LOCK_TTL` (cron lock TTL, default `900`),
+  `DRX_LITESTREAM_SNAPSHOT_LOCK_WAIT` (cron-busy wait, default `10`).
+- Added `make snapshot-drill` to [Makefile](Makefile): captures a
+  consistent snapshot via the new drush command, writes post-snapshot
+  data that must NOT survive restore, boots a sidecar pinned to the
+  snapshot TXID, and asserts both (a) the snapshot marker row is
+  present and (b) the post-snapshot mutation is absent. Proves the
+  consistency boundary is real end-to-end.
+- Hardened the orchestrator against Apache pile-up: WAL checkpoints
+  are now `PASSIVE` (not `TRUNCATE`) and the orchestrator's PDO sets
+  `busy_timeout=5000`, so a foreign-connection checkpoint no longer
+  takes a RESERVED lock that starves every Apache worker trying to
+  render the maintenance page. The redundant post-update checkpoint
+  was removed; Litestream's native sync loop ships the marker UPDATE
+  and `waitForReplica` already polls until it lands.
+- Added `pcntl_signal` handlers for SIGINT and SIGTERM in the
+  orchestrator so an interrupted snapshot (Ctrl-C, `docker stop`,
+  killed `docker compose exec` host process) releases the cron
+  semaphore row and clears maintenance mode instead of leaking a
+  stale lock that blocks both subsequent snapshots and Drupal cron
+  for 15 minutes. PHP's default shutdown-function path only runs on
+  SIGINT, not SIGTERM; explicit handlers close the gap.
+
+### Fixed
+
+#### Wait for minio to stabilize before probing
+
+- Updated [server/docker-compose.yml](server/docker-compose.yml) so the
+  reference app waits for `minio-init` to finish before bootstrapping,
+  eliminating the local `make smoke-stack` race where the S3 probe could
+  run before MinIO bucket setup was ready.
+
+#### Restore-TXID correctness in operator tooling
+- `drx_litestream` "live marker" form
+  ([MarkerForm.php](base/modules/drx_litestream/src/Form/MarkerForm.php))
+  now records the replica's latest LTX-space TXID (via
+  `LitestreamStatus::getReplicaLatestTxid()`) instead of the
+  WAL-local counter from `litestream status`. The previous value was
+  not a valid argument to `litestream restore -txid` and could
+  produce markers whose exported restore hint failed.
+- `LitestreamStatus::getHealthSnapshot()`
+  ([LitestreamStatus.php](base/modules/drx_litestream/src/Service/LitestreamStatus.php))
+  no longer compares the local WAL TXID against the replica's LTX
+  TXID. The two values live in different namespaces, so the prior
+  "replica appears behind local TXID" warning was a false positive.
+- `make pit-drill` ([Makefile](Makefile)) captures the pin TXID via
+  `litestream ltx -level all` (max `max_txid`) plus an explicit
+  `litestream sync -wait`, so the drill exercises the same restore
+  contract the orchestrator and the markers UI rely on.
+- `drx_litestream` snapshot orchestrator
+  ([SnapshotOrchestrator.php](base/modules/drx_litestream/src/Service/SnapshotOrchestrator.php))
+  default `DRX_LITESTREAM_SNAPSHOT_LOCK_TTL` is now `900` seconds,
+  matching the documented default. Previously the code used `120`s,
+  which could let the cron lock expire mid-snapshot on slower hosts.
+
+#### S3 / dev-stack consistency
+- The s3fs settings block
+  ([base/lib/settings.sh](base/lib/settings.sh)) now honours
+  `DRX_S3_FORCE_PATH_STYLE` for `use_path_style_endpoint`, matching
+  the existing semantics in
+  [base/lib/litestream.sh](base/lib/litestream.sh) and
+  [base/lib/s3_probe.php](base/lib/s3_probe.php). Previously s3fs
+  always derived path-style from `DRX_S3_ENDPOINT` alone, which could
+  diverge from the bootstrap probe / Litestream config.
+- Pinned the MinIO + mc images in
+  [server/docker-compose.yml](server/docker-compose.yml) to explicit
+  release tags instead of the floating `:latest` tag, so local dev and
+  `make smoke-stack` are reproducible and not subject to drift when
+  MinIO publishes a new release.
+- Reference-app seed hook
+  ([server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh))
+  now calls `base64_decode(..., TRUE)` so the existing `=== FALSE`
+  guard actually catches malformed input instead of being dead code.
+- Litestream credential wiring now treats `DRX_S3_ACCESS_KEY_ID` /
+  `DRX_S3_SECRET_ACCESS_KEY` as the authoritative source during
+  bootstrap ([base/lib/s3.sh](base/lib/s3.sh)); `make pit-drill` and
+  `make snapshot-drill` sidecar restores now pass `DRX_S3_*` credentials
+  directly from the shared S3 contract.
+- Litestream replica destination is likewise derived from the shared
+  S3 contract instead of being passed separately in local examples and
+  drill sidecars.
+
 ---
 
 ## [2026-05-27] (drx-apiserver v0.0.4-rc4)

@@ -33,22 +33,34 @@ drx::log "drx-apiserver ${DRX_BASE_VERSION:-unknown} starting bootstrap"
 . "${DRX_LIB_DIR}/services.sh"
 # shellcheck source=lib/install.sh
 . "${DRX_LIB_DIR}/install.sh"
+# shellcheck source=lib/timezone.sh
+. "${DRX_LIB_DIR}/timezone.sh"
 # shellcheck source=lib/modules.sh
 . "${DRX_LIB_DIR}/modules.sh"
 # shellcheck source=lib/config_import.sh
 . "${DRX_LIB_DIR}/config_import.sh"
 # shellcheck source=lib/api.sh
 . "${DRX_LIB_DIR}/api.sh"
+# shellcheck source=lib/litestream.sh
+. "${DRX_LIB_DIR}/litestream.sh"
+# shellcheck source=lib/s3.sh
+. "${DRX_LIB_DIR}/s3.sh"
 
 drx::run_hooks pre-bootstrap.d
 
+drx::s3::ensure
 drx::storage::prepare
+drx::litestream::write_config
+drx::litestream::restore
 drx::settings::write
 drx::services::write
 drx::install::ensure
+drx::timezone::ensure
 drx::modules::enable_base
+drx::s3::enable_module
 drx::run_hooks post-install.d
 drx::config_import::run
+drx::timezone::reconcile
 drx::run_hooks post-config-import.d
 drx::modules::enable_extras
 drx::run_hooks post-modules.d
@@ -58,4 +70,4 @@ drx::finalize::cache_rebuild
 drx::run_hooks post-bootstrap.d
 
 drx::log "Bootstrap complete; handing off to: $*"
-exec "$@"
+drx::litestream::exec_wrap "$@"

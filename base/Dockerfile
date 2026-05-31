@@ -4,7 +4,9 @@
 # Reusable, production-oriented Drupal 10 base image.
 #
 # Downstream images extend this base by:
-#   - copying custom modules into  /var/www/html/web/modules/custom/
+#   - copying project custom modules into /var/www/html/web/modules/custom/
+#     (the base image owns web/modules/base/ for its own first-party
+#     modules such as drx_litestream and drx_s3_journal)
 #   - copying configuration into   /var/www/html/config/sync/
 #   - dropping init hooks into     /etc/drx/hooks/<phase>.d/
 #   - setting environment variables documented in README.md
@@ -13,6 +15,50 @@
 # modules, branding, or platform-specific deployment behavior.
 
 ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793
+
+# Pinned litestream release. Bump in concert with base/CHANGELOG.md.
+ARG LITESTREAM_VERSION=0.5.11
+ARG LITESTREAM_GRPC_VERSION=1.79.3
+ARG LITESTREAM_GOOGLE_API_VERSION=0.253.0
+ARG LITESTREAM_GO_JOSE_VERSION=4.1.4
+ARG LITESTREAM_OTEL_VERSION=1.43.0
+
+# -----------------------------------------------------------------------------
+# Stage 1a: litestream-fetch — pull a pinned, architecture-correct litestream
+# binary into a tiny scratch-friendly layer. Kept separate from the PHP
+# builder so that bumping LITESTREAM_VERSION does not bust the (much larger)
+# composer install cache.
+# -----------------------------------------------------------------------------
+FROM golang:1.26-bookworm AS litestream-fetch
+
+ARG LITESTREAM_VERSION
+ARG LITESTREAM_GRPC_VERSION
+ARG LITESTREAM_GOOGLE_API_VERSION
+ARG LITESTREAM_GO_JOSE_VERSION
+ARG LITESTREAM_OTEL_VERSION
+ARG TARGETARCH
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates git; \
+    rm -rf /var/lib/apt/lists/*; \
+    case "${TARGETARCH:-amd64}" in \
+        amd64|arm64) ;; \
+        *) echo "Unsupported TARGETARCH=${TARGETARCH}"; exit 1 ;; \
+    esac; \
+    git clone --depth 1 --branch "v${LITESTREAM_VERSION}" https://github.com/benbjohnson/litestream.git /tmp/litestream; \
+    cd /tmp/litestream; \
+    go mod edit -require="google.golang.org/grpc@v${LITESTREAM_GRPC_VERSION}"; \
+    go mod edit -require="google.golang.org/api@v${LITESTREAM_GOOGLE_API_VERSION}"; \
+    go mod edit -require="github.com/go-jose/go-jose/v4@v${LITESTREAM_GO_JOSE_VERSION}"; \
+    go mod edit -require="go.opentelemetry.io/otel@v${LITESTREAM_OTEL_VERSION}"; \
+    go mod edit -require="go.opentelemetry.io/otel/sdk@v${LITESTREAM_OTEL_VERSION}"; \
+    CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH:-amd64}" \
+      GOWORK=off GOFLAGS="-mod=mod -buildvcs=false" \
+      go build -trimpath -ldflags "-s -w -X main.version=v${LITESTREAM_VERSION}" -o /usr/local/bin/litestream ./cmd/litestream; \
+    chmod 0755 /usr/local/bin/litestream; \
+    rm -rf /root/.cache/go-build /go/pkg/mod; \
+    /usr/local/bin/litestream version
 
 # -----------------------------------------------------------------------------
 # Stage 1: builder — installs Composer dependencies into a writable layer.
@@ -140,6 +186,10 @@ RUN set -eux; \
 COPY --from=builder /usr/local/lib/php/extensions/        /usr/local/lib/php/extensions/
 COPY --from=builder /usr/local/etc/php/conf.d/            /usr/local/etc/php/conf.d/
 
+# Litestream binary for SQLite backup/restore (feature is derived from
+# the shared DRX_S3_* contract at bootstrap time).
+COPY --from=litestream-fetch /usr/local/bin/litestream    /usr/local/bin/litestream
+
 # Apache configuration: Drupal docroot, required modules, hardening.
 RUN set -eux; \
     sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
@@ -191,6 +241,12 @@ RUN set -eux; \
 WORKDIR /var/www/html
 COPY --from=builder --chown=www-data:www-data /var/www/html /var/www/html
 RUN ln -s /var/www/html/vendor/bin/drush /usr/local/bin/drush
+
+# First-party base modules shipped with the image (e.g. drx_litestream,
+# drx_s3_journal). Placed under web/modules/base/ so Drupal's module
+# scanner discovers them while keeping the namespace separate from
+# downstream contrib/custom trees.
+COPY --chown=www-data:www-data modules/   /var/www/html/web/modules/base/
 
 # Drupal-specific writable directories (outside webroot for the database).
 RUN set -eux; \

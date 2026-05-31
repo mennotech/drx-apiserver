@@ -10,6 +10,209 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- New Drush commands in `drx_litestream`: `drx:litestream:status`,
+  `drx:litestream:info`, `drx:litestream:sync`, `drx:litestream:markers`,
+  `drx:litestream:marker-show`, and `drx:litestream:marker-delete` for
+  inspecting replication health, the runtime contract, and snapshot
+  markers from the CLI (in addition to the existing
+  `drx:litestream:snapshot`).
+- New Drush commands in `drx_s3_journal`: `drx:s3-journal:status` and
+  `drx:s3-journal:key-preview` for inspecting the journal pipeline and
+  previewing object keys without writing to S3 (alongside the existing
+  `drx:s3-journal:prefix` and `drx:s3-journal:test`).
+- `Drupal\drx_s3_journal\Service\Journal::getJournalPrefix()` and
+  `previewKey()` helpers to support the new commands without
+  duplicating prefix/key construction logic.
+- `drx_litestream` HTTP API: `GET /drx-litestream/v1/status` and
+  `POST /drx-litestream/v1/snapshot` endpoints authenticated by a
+  Bearer token in `DRX_LITESTREAM_API_TOKEN`. Designed for external
+  monitoring tools (Zabbix, Uptime Kuma) and remote snapshot
+  orchestration (K8s CronJob, CI pipelines, webhooks). Snapshot
+  operations via the API run in the Apache process tree and therefore
+  have full access to `DRX_S3_*` credentials injected by `init.sh`,
+  resolving the credential gap that affects `docker exec`-based Drush
+  invocations.
+- `DRX_LITESTREAM_API_ALLOWED_IPS`: comma-separated client IP addresses
+  or CIDR ranges permitted to call the litestream HTTP API. Defaults to
+  `127.0.0.1,::1` (localhost only). Uses `IpUtils::checkIp()` (IPv4,
+  IPv6, and CIDR). The check runs before token validation.
+- `DRX_REVERSE_PROXY_IPS`: comma-separated proxy IP addresses or CIDR
+  ranges written into `trusted-hosts.settings.php` each boot. When set,
+  Drupal resolves the real client IP from `X-Forwarded-For` for requests
+  arriving from these addresses, enabling `DRX_LITESTREAM_API_ALLOWED_IPS`
+  to match the originating caller rather than the gateway's address.
+
+### Fixed
+- `drx_litestream` snapshot verification now falls back to the daemon's
+  `replicated_txid` (from `litestream sync -wait`) when `litestream ltx`
+  cannot enumerate remote LTX files in the current CLI environment
+  (for example, when Drush is invoked via `docker exec` without ambient
+  AWS credentials). This prevents false-negative snapshot failures with
+  empty TXID pins and keeps `drx:litestream:snapshot` usable in local
+  compose workflows.
+- `LitestreamStatus::getReplicaLatestTxid()` now parses both decimal and
+  hex-like `litestream ltx` table output (and strips ANSI escapes)
+  instead of assuming fixed-width 16-char hex columns.
+- `Drupal\drx_litestream\Service\LitestreamStatus::isEnabled()` and
+  `getReplicaUrl()` now derive from the shared `DRX_S3_*` contract
+  when the bootstrap-internal `DRX_LITESTREAM_*` env vars are not
+  visible (e.g. when Drush is invoked via `docker exec`, which
+  receives the container-spec env rather than the runtime env exported
+  by `init.sh`).
+- `LitestreamStatus::getLocalStatus()` and `getReplicaLatestTxid()`
+  now wrap their `litestream status` / `litestream ltx` shell-outs in
+  a 10-second `timeout` so the admin dashboard and the new
+  `drx:litestream:status` Drush command never block on a slow or empty
+  replica.
+- `LitestreamStatus::forceReplicaSync()` now passes `-timeout` as an
+  integer number of seconds (the format `litestream sync` expects)
+  instead of a duration string, fixing the `parse error` that
+  prevented both `drx:litestream:sync` and the snapshot orchestrator's
+  replica-flush step from succeeding.
+- SigV4 canonical request construction in `drx_litestream`
+  (`RemoteReplica`, `SnapshotManifestWriter`) and `drx_s3_journal`
+  (`JournalWriter`) now inserts the required newline between
+  `CanonicalHeaders` and `SignedHeaders`, fixing
+  `403 SignatureDoesNotMatch` on the remote-size probe surfaced at
+  `/admin/config/drx/litestream` and on journal/manifest writes.
+- First-party base modules (`drx_litestream`, `drx_s3_journal`) are now
+  copied into the runtime image at `/var/www/html/web/modules/base/`,
+  so downstream `pm:enable` hooks no longer no-op against an absent
+  modules tree.
+- `DRX_S3_PUBLIC_HOST` is now exported in `base/lib/common.sh`
+  alongside the rest of the shared `DRX_S3_*` contract, matching its
+  documented role in `base/README.md` and its consumers in
+  `base/lib/settings.sh`.
+
+### Changed
+- Corrected the `base/lib/s3.sh` header comment to reflect that s3fs
+  fronts both `public://` and `private://` stream wrappers, not only
+  private files.
+- Documentation in `base/README.md` and `base/Dockerfile` updated to
+  reflect that the base image now ships first-party Drupal modules
+  (`drx_litestream`, `drx_s3_journal`) at `/var/www/html/web/modules/base/`,
+  and the downstream "Extending the image" example now copies project
+  modules into `/var/www/html/web/modules/custom/` to avoid colliding
+  with the base-owned path.
+
+## [0.0.5-rc5] - 2026-05-29
+
+### Security
+- Litestream delivery is now built from source at the pinned
+  `v0.5.11` tag with an explicit patched gRPC dependency
+  (`google.golang.org/grpc` `v1.79.3`) and a current Go toolchain,
+  replacing the prebuilt upstream binary artifact. This addresses
+  Trivy-reported HIGH/CRITICAL vulnerabilities in the embedded
+  `gobinary` dependency graph while preserving the base image runtime
+  contract.
+
+### Added
+- Shared S3 storage contract. A single bucket and credential pair are
+  now shared between Litestream (database replica), Drupal's file
+  backend (`drupal/s3fs`), and overlay journal workflows, with four
+  prefixes inside the bucket:
+  `${DRX_S3_PREFIX_LITESTREAM}/`, `${DRX_S3_PREFIX_PRIVATE}/`, and
+  `${DRX_S3_PREFIX_PUBLIC}/`, plus `${DRX_S3_PREFIX_JOURNAL}/`. The
+  public prefix is the **only** path
+  that is anonymously readable, and only when the bucket policy
+  explicitly grants `s3:GetObject` on `<bucket>/<public-prefix>/*`;
+  everything else is private and Drupal-gated.
+- `drupal/s3fs` `^3.0` (resolved to 3.10.0) added to base composer
+  requirements, with `aws/aws-sdk-php` pulled in transitively. The
+  module is enabled automatically during base-module bootstrap when S3
+  is required, and `settings.php` is rendered with
+  `use_s3_for_public=TRUE` and `use_s3_for_private=TRUE` so the
+  standard `public://` and `private://` stream wrappers transparently
+  resolve under the shared bucket.
+- Mandatory S3 bootstrap. New `lib/s3.sh` validates the `DRX_S3_*` env
+  contract, derives Litestream connection settings from the shared vars,
+  and
+  runs a SigV4-signed probe (`HEAD <bucket>` plus
+  `GET <bucket>?versioning=`)
+  (`lib/s3_probe.php`, dependency-free PHP) before storage and Litestream
+  initialisation. Probe failures abort boot. Buckets must have
+  versioning enabled when `DRX_S3_REQUIRED=1`.
+- `DRX_TIMEZONE` support for the Drupal site timezone. On a fresh install, if the env var is unset, the bootstrap now attempts a one-time public-IP lookup and falls back to `UTC`; the resolved value is persisted to Drupal site config. On later boots, the site timezone is reconciled only when `DRX_TIMEZONE` differs from the active Drupal config.
+- Scaffolding for SQLite backup/restore via Litestream. The pinned
+  `litestream` binary (v0.5.11) is now bundled in the runtime image at
+  `/usr/local/bin/litestream`, and a new bootstrap library
+  `lib/litestream.sh` is sourced by `init.sh`.
+- Litestream restore-on-boot path. When the shared S3 contract is
+  active, the
+  bootstrap renders `/etc/litestream.yml` from env vars and runs
+  `litestream restore` against the configured replica before Drupal
+  install detection. A populated local DB short-circuits the restore
+  under the default `if-empty` policy, so a brand-new deployment falls
+  through to the normal install path when the bucket has no backups
+  yet. Restore policy is controlled by `DRX_LITESTREAM_RESTORE_ON_BOOT`
+  (`if-empty` (default) | `always` | `never`). Replication itself
+  (writer lifecycle wrapping) lands in a subsequent release.
+
+### Runtime contract (new env vars)
+- `DRX_S3_REQUIRED` (default `1`; `0` is a CI-only escape hatch that
+  skips env validation, the connectivity probe, and the `s3fs` module
+  enable).
+- `DRX_S3_BUCKET`, `DRX_S3_REGION` (default `us-east-1`),
+  `DRX_S3_ENDPOINT`, `DRX_S3_PUBLIC_HOST`,
+  `DRX_S3_FORCE_PATH_STYLE` (auto),
+  `DRX_S3_ACCESS_KEY_ID`, `DRX_S3_SECRET_ACCESS_KEY` — required when
+  `DRX_S3_REQUIRED=1`; shared by Litestream and `drupal/s3fs`.
+- `DRX_S3_PREFIX_LITESTREAM` (default `litestream`),
+  `DRX_S3_PREFIX_PRIVATE` (default `private`),
+  `DRX_S3_PREFIX_PUBLIC` (default `public`),
+  `DRX_S3_PREFIX_JOURNAL` (default `journal/v1`) — four-prefix layout
+  inside the shared bucket. The public prefix is the only path that
+  may be exposed anonymously, and only via an explicit bucket policy.
+- `DRX_TIMEZONE` (optional; sets the Drupal site timezone. If unset on a fresh install, the bootstrap attempts a one-time public-IP lookup and falls back to `UTC`).
+- `DRX_LITESTREAM_SYNC_INTERVAL` (default `1s`).
+- `DRX_LITESTREAM_RESTORE_ON_BOOT` (default `if-empty`).
+- `DRX_LITESTREAM_CONFIG_FILE` (default `/etc/litestream.yml`; if the
+  file already exists at boot it is treated as an operator-supplied
+  override and the auto-render is skipped).
+- `DRX_LITESTREAM_RESTORE_TXID` (optional; pins restore to a specific
+  hex TXID, e.g. taken from a `drx_litestream` marker export).
+- `DRX_LITESTREAM_RESTORE_TIMESTAMP` (optional; RFC3339 timestamp to
+  restore at). Mutually exclusive with `_RESTORE_TXID`; TXID wins.
+- `DRX_LITESTREAM_CLEAR_MAINTENANCE` (default `1`). After a successful
+  restore the bootstrap deletes the `system.maintenance_mode` row from
+  the restored DB's `key_value` table before Apache starts. Application-
+  consistent snapshots are captured *while* Drupal is in maintenance
+  mode, so without this clear-on-restore step a sidecar booted from a
+  consistent snapshot would come up serving 503 to every request and
+  its docker healthcheck would never go green. Set to `0` to preserve
+  whatever maintenance-mode value the snapshot contained (e.g. when
+  restoring deliberately into maintenance for manual inspection).
+- `DRX_LITESTREAM_CONTROL_SOCKET` (default `/var/run/litestream.sock`)
+  and `DRX_LITESTREAM_CONTROL_SOCKET_PERMS` (default `0666`). When set,
+  the generated litestream config enables a `socket:` block so the
+  replicate daemon listens for `litestream sync` / `litestream info`
+  RPCs. Required for application-consistent snapshot tooling to obtain
+  stable LTX-space TXIDs by force-flushing pending WAL frames on
+  demand instead of waiting for `sync-interval`. Set the path to an
+  empty string to disable the socket entirely.
+- Litestream credentials are sourced from
+  `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY`. The replica URL
+  in the shared S3 contract is `s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}`.
+
+### Changed
+- When the shared S3 contract is active, the bootstrap final exec is
+  wrapped by `litestream replicate -config /etc/litestream.yml -exec
+  "<CMD>"` instead of plain `exec "$@"`. The resulting process tree is
+  `tini → drx-init → litestream → <CMD>` (typically Apache). Litestream
+  forwards signals to the wrapped process and performs a final WAL
+  checkpoint + replica sync on graceful shutdown (SIGTERM). When the
+  feature is disabled the exec path is unchanged.
+- Litestream credentials are now always derived from
+  `DRX_S3_ACCESS_KEY_ID` / `DRX_S3_SECRET_ACCESS_KEY` when S3 is
+  required. Shared S3 credentials remain the only supported source of
+  truth during bootstrap, preventing split-credential configurations
+  between s3fs and replica writes.
+- The shared S3 contract is now also authoritative for the Litestream
+  replica destination when S3 is required. Bootstrap derives it from
+  `DRX_S3_BUCKET` + `DRX_S3_PREFIX_LITESTREAM` to prevent
+  endpoint/path drift.
+
 ## [0.0.3-rc3] - 2026-05-27
 
 ### Changed
