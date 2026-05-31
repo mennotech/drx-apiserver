@@ -113,7 +113,8 @@ check_public_functions() {
     local prev1="" prev2="" prev3=""
     local lineno=0
     # shellcheck disable=SC2094
-    # SC2094 false positive: print_finding writes to stderr, not "$file".
+    # SC2094 false positive in this context: the loop reads "$file"
+    # while emitting findings to stdout, not writing back to "$file".
     while IFS= read -r raw; do
         lineno=$((lineno + 1))
 
