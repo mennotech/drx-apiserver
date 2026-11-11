@@ -17,6 +17,11 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+### Fixed
+
+- Made the Composer build stage explicit so Podman can build the base image
+  without requiring a pre-pulled `composer:2` image.
+
 ---
 
 ## [2026-05-27] (drx-apiserver v0.0.4-rc4)

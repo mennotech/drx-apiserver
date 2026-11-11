@@ -14,6 +14,8 @@
 
 ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793
 
+FROM docker.io/library/composer:2 AS composer
+
 # -----------------------------------------------------------------------------
 # Stage 1: builder — installs Composer dependencies into a writable layer.
 # -----------------------------------------------------------------------------
@@ -54,7 +56,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
         xml \
         zip
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
