@@ -84,8 +84,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   alongside the rest of the shared `DRX_S3_*` contract, matching its
   documented role in `base/README.md` and its consumers in
   `base/lib/settings.sh`.
+- Bootstrap now creates an empty `DRUPAL_CONFIG_SYNC_DIR` when it is
+  missing. Drupal core 10.6.23's installer no longer auto-fixes the
+  permissions of `settings.php` and only skips its "settings file must be
+  writable" requirement when the config sync directory exists, so a
+  base-only container (no downstream config) failed to install.
 
 ### Changed
+- Updated the pinned PHP Apache Bookworm base image from 8.3.31 to
+  8.3.37, including its matching multi-platform image digest.
+- Added exact-version `DRX_APT_SECURITY_OVERRIDES` pins for the `libpam*`
+  packages (1.5.2-6+deb12u3) to fix CVE-2025-6020.
+- Bumped the bundled Litestream build from 0.5.11 to 0.5.18, with
+  pinned dependency overrides google.golang.org/grpc 1.85.0,
+  google.golang.org/api 0.317.0, go-jose/v4 4.1.9, and OpenTelemetry
+  1.47.0, to clear Trivy HIGH findings in the `litestream` binary.
+- Refreshed `base/composer.lock` (`composer update --with-all-dependencies`),
+  including Drupal core 10.6.23, drupal/s3fs 3.12.0, Guzzle 7.17.0,
+  mtdowling/jmespath.php 2.10.0, Symfony 6.4.51, and Twig 3.31.1, to clear
+  Trivy HIGH/CRITICAL findings in Composer packages.
 - Corrected the `base/lib/s3.sh` header comment to reflect that s3fs
   fronts both `public://` and `private://` stream wrappers, not only
   private files.

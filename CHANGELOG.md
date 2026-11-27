@@ -19,6 +19,29 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- `make smoke-stack` and the DR / PIT / snapshot drills ([Makefile](Makefile))
+  now look up the app container by compose labels via the container engine
+  (`APP_CID_CMD`) instead of `$(COMPOSE) ps -q drx-apiserver`, which
+  `podman-compose` 1.3.0 rejects (`unrecognized arguments: drx-apiserver`).
+- [.env.example](.env.example) now lists every variable the reference
+  compose file defaults with `${VAR:-default}` (`DRUPAL_DB_DRIVER`,
+  `DRX_S3_PUBLIC_HOST`, `DRX_LITESTREAM_API_*`, `DRX_REVERSE_PROXY_IPS`),
+  because `podman-compose` 1.3.0 passes unexpanded defaults through
+  literally when a variable is unset.
+- `make scan` ([Makefile](Makefile)) now works with `podman-remote`: it no
+  longer bind-mounts host paths (which the remote Podman service resolved on
+  its own host, failing with `statfs ... no such file or directory`). The
+  saved image tar is streamed to Trivy on stdin and the vulnerability DB is
+  cached in the named volume `TRIVY_CACHE_VOLUME` (default
+  `drx-trivy-cache`).
+- `BUILD_DATE` in the [Makefile](Makefile) is now derived from the last
+  commit instead of the wall clock, so repeated `make base` / `make scan`
+  runs reuse the layer cache.
+- Replaced the unpullable `minio/minio` and `minio/mc` images in
+  [server/docker-compose.yml](server/docker-compose.yml) (upstream no longer
+  publishes container images, which broke `make smoke-stack` in CI) with
+  `docker.io/pgsty/silo` and `docker.io/pgsty/mc`, pinned to
+  `RELEASE.2026-11-12T00-00-00Z`.
 - Made the Composer build stage explicit for Podman compatibility.
 - Made Compose file and build-context paths compatible with Podman Compose,
   documented explicit `podman-remote` Compose selection, and recreated

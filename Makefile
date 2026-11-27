@@ -34,7 +34,9 @@ BASE_UP_PORT ?= 8087
 BASE_UP_CONTAINER ?= drx-base
 VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# Derived from the last commit (not the wall clock) so repeated builds hit the
+# layer cache; override with BUILD_DATE=... if needed.
+BUILD_DATE   ?= $(shell TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)
 
 # Container engine selection. Defaults to docker; set CONTAINER_ENGINE=podman
 # to drive the same targets through rootless or rootful Podman. For
@@ -42,9 +44,9 @@ BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 # executable; the default provider is not swapped automatically.
 # COMPOSE can be overridden to select another compose front-end.
 #
-# `make scan` is engine-agnostic by design: it pipes
-# `$(CONTAINER_ENGINE) save` into Trivy on stdin, so no container socket
-# needs to be mounted or auto-detected. Junior devs can run
+# `make scan` is engine-agnostic by design: it feeds
+# `$(CONTAINER_ENGINE) save` output into Trivy on stdin, so no container
+# socket or host path needs to be mounted or auto-detected. Junior devs can run
 # `make verify CONTAINER_ENGINE=podman` with no other configuration.
 COMPOSE_FILE      ?= server/docker-compose.yml
 COMPOSE_PROJECT   ?= drx-apiserver
@@ -53,10 +55,15 @@ CONTAINER_ENGINE  ?= docker
 COMPOSE           ?= $(CONTAINER_ENGINE) compose
 COMPOSE_ARGS      ?= -f $(abspath $(COMPOSE_FILE)) $(if $(strip $(COMPOSE_ENV_FILE)),--env-file $(abspath $(COMPOSE_ENV_FILE))) -p $(COMPOSE_PROJECT)
 UP_ARGS           ?= $(if $(filter podman podman-remote,$(notdir $(CONTAINER_ENGINE))),auto)
+# Resolves the running app container ID from compose labels (set by both
+# docker compose and podman-compose). `podman-compose ps` 1.3.0 rejects a
+# service argument, so it can't be used for this lookup.
+APP_CID_CMD       = $(CONTAINER_ENGINE) ps -q --filter label=com.docker.compose.project=$(COMPOSE_PROJECT) --filter label=com.docker.compose.service=drx-apiserver
 
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
-TRIVY_VERSION  ?= 0.70.0
+TRIVY_VERSION  ?= 0.76.2
 TRIVY_SEVERITY ?= CRITICAL,HIGH
+TRIVY_CACHE_VOLUME ?= drx-trivy-cache
 SHELLCHECK_IMAGE ?= koalaman/shellcheck:v0.10.0
 SHELLCHECK_CORE_EXCLUDES ?= SC1090,SC1091
 SHELLCHECK_HOOK_EXCLUDES ?= SC2016
@@ -216,9 +223,11 @@ lint-shell-docs:
 #   - ignore-unfixed: true       (only fail on issues with an upstream fix)
 #   - exit-code: 1 on findings
 # Trivy is run via its official OCI image so contributors don't need to
-# install the binary; the vulnerability DB is cached under
-# $$HOME/.cache/trivy. The image to scan is delivered to Trivy as a tar
-# saved by `$(CONTAINER_ENGINE) save` and mounted via `--input`
+# install the binary. No host paths are bind-mounted, because with
+# podman-remote the engine resolves them on the server host, not here:
+#   - the vulnerability DB is cached in the named volume $(TRIVY_CACHE_VOLUME)
+#   - the image tar from `$(CONTAINER_ENGINE) save` is streamed to the
+#     container on stdin and scanned with `--input`
 scan: base
 	@if ! $(CONTAINER_ENGINE) info >/dev/null 2>&1; then \
 		echo "ERROR: $(CONTAINER_ENGINE) API is not reachable"; \
@@ -230,20 +239,16 @@ scan: base
 		fi; \
 		exit 1; \
 	fi
-	@mkdir -p $${HOME}/.cache/trivy
 	@TMP=$$(mktemp -d) && \
 		trap 'rm -rf "$$TMP"' EXIT && \
 		echo "Saving $(BASE_IMAGE) to $$TMP/image.tar" && \
 		$(CONTAINER_ENGINE) save -o "$$TMP/image.tar" $(BASE_IMAGE) && \
-		$(CONTAINER_ENGINE) run --rm \
-			-v "$$TMP:/scan:ro" \
-			-v "$${HOME}/.cache/trivy:/root/.cache/" \
-			aquasec/trivy:$(TRIVY_VERSION) image \
-				--input /scan/image.tar \
-				--severity $(TRIVY_SEVERITY) \
-				--ignore-unfixed \
-				--exit-code 1 \
-				--no-progress
+		$(CONTAINER_ENGINE) run --rm -i \
+			-v "$(TRIVY_CACHE_VOLUME):/root/.cache/" \
+			--entrypoint sh \
+			aquasec/trivy:$(TRIVY_VERSION) -c \
+			'cat > /tmp/image.tar && exec trivy image --input /tmp/image.tar --severity $(TRIVY_SEVERITY) --ignore-unfixed --exit-code 1 --no-progress' \
+			< "$$TMP/image.tar"
 
 # Minimum local check before `git push`. Mirrors the CI gates.
 verify: smoke scan
@@ -280,7 +285,7 @@ smoke-stack: base
 		$(COMPOSE) $(COMPOSE_ARGS) up --no-build -d >/dev/null; \
 	trap 'rc=$$?; if [ $$rc -ne 0 ]; then echo "--- drx-apiserver logs (tail) ---"; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) logs --tail=120 drx-apiserver || true; fi; APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) down -v >/dev/null 2>&1 || true; exit $$rc' EXIT; \
 	echo "Waiting up to $(SMOKE_STACK_TIMEOUT)s for backend health..."; \
-	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	CID="$$($(APP_CID_CMD))"; \
 	[ -n "$$CID" ] || { echo "drx-apiserver container not found"; exit 1; }; \
 	for i in $$(seq 1 $(SMOKE_STACK_TIMEOUT)); do \
 		if $(CONTAINER_ENGINE) exec $$CID /usr/local/bin/drx-healthcheck >/dev/null 2>&1; then \
@@ -311,7 +316,7 @@ smoke-stack: base
 # 5) boot app and verify both markers restored.
 dr-drill: up-build
 	@echo "Starting DR drill (single-machine litestream restore test)"
-	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	@CID="$$($(APP_CID_CMD))"; \
 	if [ -z "$$CID" ]; then echo "drx-apiserver container not found"; exit 1; fi; \
 	echo "Waiting for backend health..."; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
@@ -340,7 +345,7 @@ dr-drill: up-build
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) rm -f -s -v drx-apiserver >/dev/null 2>&1 || true; \
 	echo "Recreating backend and restoring from replica"; \
 	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d drx-apiserver >/dev/null; \
-	CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	CID="$$($(APP_CID_CMD))"; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
 		status="$$( $(CONTAINER_ENGINE) inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $$CID 2>/dev/null || true )"; \
 		if [ "$$status" = "healthy" ]; then echo "restored backend healthy after $${i}s"; break; fi; \
@@ -366,7 +371,7 @@ dr-drill: up-build
 # Validates the DRX_LITESTREAM_RESTORE_TXID code path end-to-end.
 pit-drill: up-build
 	@echo "Starting PIT drill (TXID-pinned litestream restore)"
-	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	@CID="$$($(APP_CID_CMD))"; \
 	if [ -z "$$CID" ]; then echo "drx-apiserver container not found"; exit 1; fi; \
 	echo "Waiting for backend health..."; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \
@@ -432,7 +437,7 @@ pit-drill: up-build
 # or composer.json).
 snapshot-drill: $(if $(SKIP_BUILD),up,up-build)
 	@echo "Starting snapshot drill (drx_litestream consistent capture)"
-	@CID="$$(APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) ps -q drx-apiserver)"; \
+	@CID="$$($(APP_CID_CMD))"; \
 	if [ -z "$$CID" ]; then echo "drx-apiserver container not found"; exit 1; fi; \
 	echo "Waiting for backend health..."; \
 	for i in $$(seq 1 $(DR_DRILL_HEALTH_TIMEOUT)); do \

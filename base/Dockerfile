@@ -14,14 +14,14 @@
 # This image deliberately does NOT bake in any one downstream project's
 # modules, branding, or platform-specific deployment behavior.
 
-ARG PHP_BASE_IMAGE=php:8.3.31-apache-bookworm@sha256:7a981a5d14208d35dc4b43c4c0f60e24a4fec9c80509cfe8046ed6598d250793
+ARG PHP_BASE_IMAGE=php:8.3.37-apache-bookworm@sha256:353569a793b80b5e7e90bd750f5939e21b9f2a96b22cf77d6fa86cb0fc23570f
 
 # Pinned litestream release. Bump in concert with base/CHANGELOG.md.
-ARG LITESTREAM_VERSION=0.5.11
-ARG LITESTREAM_GRPC_VERSION=1.79.3
-ARG LITESTREAM_GOOGLE_API_VERSION=0.253.0
-ARG LITESTREAM_GO_JOSE_VERSION=4.1.4
-ARG LITESTREAM_OTEL_VERSION=1.43.0
+ARG LITESTREAM_VERSION=0.5.18
+ARG LITESTREAM_GRPC_VERSION=1.85.0
+ARG LITESTREAM_GOOGLE_API_VERSION=0.317.0
+ARG LITESTREAM_GO_JOSE_VERSION=4.1.9
+ARG LITESTREAM_OTEL_VERSION=1.47.0
 
 FROM docker.io/library/composer:2 AS composer
 
@@ -130,7 +130,7 @@ FROM ${PHP_BASE_IMAGE} AS runtime
 ARG DRX_BASE_VERSION=0.0.0-dev
 ARG DRX_BASE_VCS_REF=unknown
 ARG DRX_BASE_BUILD_DATE=unknown
-ARG DRX_APT_SECURITY_OVERRIDES="libgnutls30=3.7.9-2+deb12u7 libgssapi-krb5-2=1.20.1-2+deb12u5 libk5crypto3=1.20.1-2+deb12u5 libkrb5-3=1.20.1-2+deb12u5 libkrb5support0=1.20.1-2+deb12u5"
+ARG DRX_APT_SECURITY_OVERRIDES="libgnutls30=3.7.9-2+deb12u7 libgssapi-krb5-2=1.20.1-2+deb12u5 libk5crypto3=1.20.1-2+deb12u5 libkrb5-3=1.20.1-2+deb12u5 libkrb5support0=1.20.1-2+deb12u5 libpam0g=1.5.2-6+deb12u3 libpam-modules=1.5.2-6+deb12u3 libpam-modules-bin=1.5.2-6+deb12u3 libpam-runtime=1.5.2-6+deb12u3"
 
 LABEL org.opencontainers.image.title="drx-apiserver" \
       org.opencontainers.image.description="Reusable Drupal 10 base image for decoupled API backends." \

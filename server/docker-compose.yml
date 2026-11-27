@@ -7,9 +7,10 @@
 
 services:
   minio:
-    # Pinned to a published MinIO container release tag. Bump
-    # intentionally; do not float to :latest.
-    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # Upstream MinIO no longer publishes container images, so this uses
+    # Silo, the actively maintained S3-compatible MinIO fork from PGSTY.
+    # Bump intentionally; do not float to :latest.
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     command: server /data --address ":9000" --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -23,9 +24,8 @@ services:
     restart: unless-stopped
 
   minio-init:
-    # Pinned mc client; bump intentionally, see
-    # https://github.com/minio/mc/releases.
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    # Pinned mc client published alongside Silo; bump intentionally.
+    image: docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
     depends_on:
       - minio
     entrypoint: >-

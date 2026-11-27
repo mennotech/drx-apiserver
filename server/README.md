@@ -140,11 +140,13 @@ seeded `note` records are reachable over JSON:API. It is the
 recommended end-to-end check before pushing changes that touch
 [server/](.) or the bootstrap pipeline.
 
-## Shared S3 storage (MinIO sidecar)
+## Shared S3 storage (MinIO-compatible sidecar)
 
 The overlay treats S3 as the source of truth for both user content and
 the Litestream SQLite replica. The local
-[`docker-compose.yml`](docker-compose.yml) boots a MinIO sidecar plus a
+[`docker-compose.yml`](docker-compose.yml) boots an S3 sidecar (service
+`minio`, running [Silo](https://silo.pgsty.com/), a maintained MinIO fork,
+because upstream MinIO no longer publishes container images) plus a
 one-shot bucket initialiser (`minio-init`) that creates the bucket and
 enables bucket versioning, then flips the public prefix to
 anonymous-read, mirroring the production

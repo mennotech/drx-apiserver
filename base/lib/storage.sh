@@ -12,6 +12,14 @@ drx::storage::prepare() {
     # stream wrapper — even when s3fs routes actual writes to S3.
     install -d -o www-data -g www-data -m 0770 "${DRUPAL_PRIVATE_FILES_PATH:-/var/drupal-private}"
 
+    # Config sync directory: Drupal core's installer only skips its
+    # "settings.php must be writable" requirement when this directory exists
+    # (the settings.php we generate is locked 0440). Create it only when
+    # missing so mounted or downstream-provided config is left untouched.
+    if [ ! -d "${DRUPAL_CONFIG_SYNC_DIR}" ]; then
+        install -d -o www-data -g www-data -m 0750 "${DRUPAL_CONFIG_SYNC_DIR}"
+    fi
+
     # Files directory: if a parent symlink is provided via DRUPAL_FILES_TARGET
     # (typical for orchestrators that mount a persistent volume elsewhere),
     # symlink files/ to that target. Otherwise treat files/ as a real dir.
