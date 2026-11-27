@@ -313,22 +313,21 @@ class DrxLitestreamCommands extends DrushCommands {
   /**
    * Best-effort manifest key hint for a marker row.
    *
-   * Mirrors SnapshotManifestWriter::buildObjectKey() so operators can
-   * locate the JSON manifest in S3 without a second lookup.
+   * Mirrors SnapshotManifestWriter::buildObjectKey(): manifests are written
+   * under the bucket's `snapshots/` prefix (not the Litestream prefix), so
+   * operators can locate the JSON manifest in S3 without a second lookup.
    */
   protected function markerManifestHint(array $row): string {
-    $prefix = (string) ($row['s3_prefix_litestream'] ?? '');
     $id = (int) ($row['id'] ?? 0);
     $captured = (int) ($row['captured_at'] ?? 0);
-    if ($prefix === '' || $id <= 0 || $captured <= 0) {
+    if ($id <= 0 || $captured <= 0) {
       return '';
     }
     $ts = gmdate('Ymd\THis\Z', $captured);
     $label = $this->sanitizeKeyPart((string) ($row['label'] ?? 'snapshot'));
     $txid = $this->sanitizeKeyPart((string) ($row['txid'] ?? 'unknown-txid'));
     return sprintf(
-      '%s/snapshots/%s-%s-%d-%s.json',
-      rtrim($prefix, '/'),
+      'snapshots/%s-%s-%d-%s.json',
       $ts,
       $label,
       $id,

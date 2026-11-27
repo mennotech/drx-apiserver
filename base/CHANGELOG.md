@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- The `drx_litestream` Drush marker manifest hint (and the API docs' example
+  `manifest_key`) now reports `snapshots/<...>.json`, matching where
+  `SnapshotManifestWriter` actually stores manifests, instead of prefixing
+  the Litestream prefix (`litestream/snapshots/...`).
 - `drx_litestream` remote replica sizing (`RemoteReplica`) now honours an
   explicit `DRX_S3_FORCE_PATH_STYLE=false|0|no` against a custom endpoint by
   using virtual-hosted addressing, matching the bootstrap probe and

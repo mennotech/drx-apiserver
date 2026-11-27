@@ -141,7 +141,7 @@ class ApiController extends ControllerBase {
    * Successful response (HTTP 200):
    *   { "id": 7, "state": "ok", "db_txid": "83",
    *     "consistent_at": 1748659183,
-   *     "manifest_key": "litestream/snapshots/..." }
+   *     "manifest_key": "snapshots/..." }
    *
    * Failure response (HTTP 400/500/503):
    *   { "state": "failed", "error": "..." }
