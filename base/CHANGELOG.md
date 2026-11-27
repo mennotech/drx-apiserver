@@ -44,6 +44,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- Pinned Litestream restores (`DRX_LITESTREAM_RESTORE_TXID` /
+  `DRX_LITESTREAM_RESTORE_TIMESTAMP`) no longer pass `-if-replica-exists`.
+  A requested backup that is unavailable now fails bootstrap instead of
+  silently installing a new site on a clean container; the first-boot
+  fallback applies to unpinned restores only.
 - `drx_litestream` marker export now falls back to the marker id for the
   `Content-Disposition` filename when the sanitised label is empty (or
   `preg_replace()` fails), instead of producing `marker-.json`.

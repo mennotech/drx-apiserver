@@ -138,26 +138,34 @@ drx::litestream::restore() {
     install -d -o www-data -g www-data -m 0770 "$(dirname "${DRUPAL_SQLITE_PATH}")"
 
     drx::log "litestream: attempting restore to ${DRUPAL_SQLITE_PATH}"
-    # -if-replica-exists: clean no-op when the bucket has no backups yet
-    # (first boot of a brand-new deployment). -if-db-not-exists guards
-    # against clobbering a populated local DB in the if-empty branch.
-    local restore_flags=(-if-replica-exists)
-    if [ "${policy}" = "if-empty" ]; then
-        restore_flags+=(-if-db-not-exists)
-    fi
-
     # Optional point-in-time pin. When DRX_LITESTREAM_RESTORE_TXID is set
     # (e.g. taken from a drx_litestream marker export), restore up to and
     # including that transaction instead of the latest. Mutually exclusive
     # with DRX_LITESTREAM_RESTORE_TIMESTAMP; TXID wins if both are set.
+    local pin_flags=()
     if [ -n "${DRX_LITESTREAM_RESTORE_TXID:-}" ]; then
         drx::log "litestream: pinning restore to txid=${DRX_LITESTREAM_RESTORE_TXID}"
-        restore_flags+=(-txid "${DRX_LITESTREAM_RESTORE_TXID}")
+        pin_flags=(-txid "${DRX_LITESTREAM_RESTORE_TXID}")
     elif [ -n "${DRX_LITESTREAM_RESTORE_TIMESTAMP:-}" ]; then
         drx::log "litestream: pinning restore to timestamp=${DRX_LITESTREAM_RESTORE_TIMESTAMP}"
-        restore_flags+=(-timestamp "${DRX_LITESTREAM_RESTORE_TIMESTAMP}")
+        pin_flags=(-timestamp "${DRX_LITESTREAM_RESTORE_TIMESTAMP}")
     fi
 
+    # -if-replica-exists: clean no-op when the bucket has no backups yet
+    # (first boot of a brand-new deployment). It is reserved for unpinned
+    # restores: when a TXID/timestamp was explicitly requested, a missing
+    # backup must fail the restore instead of installing a new site.
+    # -if-db-not-exists guards against clobbering a populated local DB in
+    # the if-empty branch.
+    local restore_flags=()
+    if [ ${#pin_flags[@]} -eq 0 ]; then
+        restore_flags+=(-if-replica-exists)
+    else
+        restore_flags+=("${pin_flags[@]}")
+    fi
+    if [ "${policy}" = "if-empty" ]; then
+        restore_flags+=(-if-db-not-exists)
+    fi
     if sudo -E -u www-data litestream restore \
             -config "${DRX_LITESTREAM_CONFIG_FILE}" \
             "${restore_flags[@]}" \

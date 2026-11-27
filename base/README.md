@@ -258,7 +258,7 @@ ignores these settings.
 | `DRX_LITESTREAM_SYNC_INTERVAL`        | `1s`                 | Replica sync cadence passed to the generated config.                                  |
 | `DRX_LITESTREAM_RESTORE_ON_BOOT`      | `if-empty`           | One of `if-empty` (restore only when local DB is missing), `always`, `never`.         |
 | `DRX_LITESTREAM_CONFIG_FILE`          | `/etc/litestream.yml`| If the file already exists at boot, it is treated as an operator override.            |
-| `DRX_LITESTREAM_RESTORE_TXID`         | _(unset)_            | Optional hex TXID to pin the restore at (e.g. taken from a marker export).            |
+| `DRX_LITESTREAM_RESTORE_TXID`         | _(unset)_            | Optional hex TXID to pin the restore at (e.g. taken from a marker export). Boot fails if that backup is unavailable. |
 | `DRX_LITESTREAM_RESTORE_TIMESTAMP`    | _(unset)_            | Optional RFC3339 timestamp. Mutually exclusive with `_RESTORE_TXID`; TXID wins.       |
 | `DRX_LITESTREAM_CLEAR_MAINTENANCE`    | `1`                  | After a successful restore, clear `system.maintenance_mode` from the restored DB before Apache starts. Set to `0` to leave whatever value was in the snapshot in place (useful when restoring deliberately into maintenance). |
 | `DRX_LITESTREAM_CONTROL_SOCKET`       | `/var/run/litestream.sock` | Path of the litestream daemon's control socket. Used by snapshot tooling running as a non-root user inside the container to call `litestream sync` / `litestream info`. Set to an empty string to disable the socket. |
