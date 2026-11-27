@@ -19,6 +19,11 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- Made the Composer build stage explicit for Podman compatibility.
+- Made Compose file and build-context paths compatible with Podman Compose,
+  documented explicit `podman-remote` Compose selection, and recreated
+  existing Podman containers on `make up` without rebuilding or removing
+  named volumes.
 - [.github/workflows/drupal-coding-standards.yml](.github/workflows/drupal-coding-standards.yml)
   now also triggers on `pull_request` with the same paths filter, so
   PRs (including from forks) get a dedicated PHPCS check matching the

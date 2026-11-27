@@ -38,7 +38,7 @@ services:
 
   drx-apiserver:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-apiserver:dev}

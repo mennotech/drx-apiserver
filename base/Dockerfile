@@ -23,6 +23,8 @@ ARG LITESTREAM_GOOGLE_API_VERSION=0.253.0
 ARG LITESTREAM_GO_JOSE_VERSION=4.1.4
 ARG LITESTREAM_OTEL_VERSION=1.43.0
 
+FROM docker.io/library/composer:2 AS composer
+
 # -----------------------------------------------------------------------------
 # Stage 1a: litestream-fetch — pull a pinned, architecture-correct litestream
 # binary into a tiny scratch-friendly layer. Kept separate from the PHP
@@ -100,7 +102,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
         xml \
         zip
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 

@@ -100,15 +100,33 @@ command line if needed, e.g. `make base VERSION=0.2.0-dev`.
 
 The Makefile is engine-agnostic: set `CONTAINER_ENGINE=podman` (and,
 optionally, `COMPOSE="podman compose"`) to drive every target through
-Podman. `make scan` does not need a container API socket — it exports
+Podman. For Podman Remote, set both variables in your shell before running
+Make, for example:
+
+```sh
+export CONTAINER_ENGINE=podman-remote
+export COMPOSE="podman-compose --podman-path /path/to/podman-remote"
+make up
+```
+
+Make does not switch Compose providers automatically. This requires
+`podman-compose` locally.
+`make scan` does not need a container API socket — it exports
 the image with `$(CONTAINER_ENGINE) save` into a host tempdir and feeds
 it to Trivy via `--input`, so `make verify CONTAINER_ENGINE=podman`
 works the same on Docker, macOS/Windows `podman machine`, and rootless
 or rootful Linux Podman. CI still runs the Docker path.
 
+For Podman, `make up` recreates existing Compose containers without
+rebuilding the image or removing named volumes. This avoids name collisions
+with `podman-compose` 1.3.0 on repeated starts. Set `UP_ARGS` to override
+the automatic behavior (for example, `UP_ARGS=` disables recreation).
+
 Compose orchestration is intentionally rooted in [Makefile](Makefile):
-the compose definition lives in [server/docker-compose.yml](server/docker-compose.yml),
+the compose definition and its build context live in [server/](server/),
 and supported local workflows run via `make` from the repository root.
+If a root `.env` exists, Make passes it explicitly to Compose. Override
+`COMPOSE_ENV_FILE` to select another environment file.
 
 The reference app expects `DRUPAL_ADMIN_PASS` to be set (in `.env` or the
 shell). See [server/docker-compose.yml](server/docker-compose.yml) for the full set of
