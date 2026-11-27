@@ -144,6 +144,17 @@ class JournalWriter {
       return [$base, $host, $canonicalUri];
     }
 
+    // No custom endpoint: AWS. Virtual-hosted style by default; path-style
+    // when DRX_S3_FORCE_PATH_STYLE is explicitly enabled (needed for bucket
+    // names that break virtual-hosted HTTPS, e.g. names containing dots).
+    $forcePath = in_array(strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE')), ['1', 'true', 'yes'], TRUE);
+    if ($forcePath) {
+      $base = "https://s3.{$region}.amazonaws.com";
+      $host = "s3.{$region}.amazonaws.com";
+      $canonicalUri = '/' . rawurlencode($bucket) . '/' . $encodedKey;
+      return [$base, $host, $canonicalUri];
+    }
+
     $base = "https://{$bucket}.s3.{$region}.amazonaws.com";
     $host = "{$bucket}.s3.{$region}.amazonaws.com";
     $canonicalUri = '/' . $encodedKey;

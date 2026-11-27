@@ -60,6 +60,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `DRX_S3_FORCE_PATH_STYLE=true` against AWS (no `DRX_S3_ENDPOINT`),
   listing via path-style `https://s3.<region>.amazonaws.com/<bucket>/`
   instead of always using virtual-hosted style.
+- `drx_s3_journal` writes (`JournalWriter`) now honor
+  `DRX_S3_FORCE_PATH_STYLE=true` against AWS (no `DRX_S3_ENDPOINT`) by
+  using path-style `https://s3.<region>.amazonaws.com/<bucket>/...`
+  instead of always using virtual-hosted style.
 - `drx_litestream` snapshot verification now falls back to the daemon's
   `replicated_txid` (from `litestream sync -wait`) when `litestream ltx`
   cannot enumerate remote LTX files in the current CLI environment
