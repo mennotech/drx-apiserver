@@ -76,10 +76,13 @@ foreach ($nodes as $data) {
   if (!empty($data["attachment"])) {
     $subdir = "note-attachments/" . gmdate("Y-m");
     $dir_uri = "public://" . $subdir;
-    \Drupal::service("file_system")->prepareDirectory(
+    $dir_prepared = \Drupal::service("file_system")->prepareDirectory(
       $dir_uri,
       \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY | \Drupal\Core\File\FileSystemInterface::MODIFY_PERMISSIONS,
     );
+    if (!$dir_prepared) {
+      throw new \RuntimeException("Unable to create or make writable the attachment directory " . $dir_uri . " (check the public:// stream wrapper and S3 settings).");
+    }
 
     $repo = \Drupal::service("file.repository");
     $raw_name = (string) ($data["attachment"]["name"] ?? "attachment.bin");

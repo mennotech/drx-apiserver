@@ -19,6 +19,12 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- Reference-app seed hook
+  ([server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh))
+  now checks the result of `FileSystem::prepareDirectory()` and throws a
+  clear exception when the attachment directory cannot be created or made
+  writable, instead of failing later in `writeData()` with a harder to
+  diagnose error.
 - Updated `github/codeql-action/upload-sarif` from v3 to v4 in
   [.github/workflows/base-image.yml](.github/workflows/base-image.yml) and
   [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml)
