@@ -19,6 +19,10 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- Updated `github/codeql-action/upload-sarif` from v3 to v4 in
+  [.github/workflows/base-image.yml](.github/workflows/base-image.yml) and
+  [.github/workflows/supported-image-security-scan.yml](.github/workflows/supported-image-security-scan.yml)
+  ahead of the CodeQL Action v3 deprecation in December 2026.
 - `make smoke-stack` and the DR / PIT / snapshot drills ([Makefile](Makefile))
   now look up the app container by compose labels via the container engine
   (`APP_CID_CMD`) instead of `$(COMPOSE) ps -q drx-apiserver`, which
