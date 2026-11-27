@@ -44,6 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_s3_journal` writes (`JournalWriter`) now honour an explicit
+  `DRX_S3_FORCE_PATH_STYLE=false|0|no` against a custom endpoint by using
+  virtual-hosted addressing (bucket-prefixed host in the URL and signature,
+  bucket omitted from the canonical URI), matching the bootstrap probe and
+  Litestream. Previously a virtual-host-only backend could pass bootstrap
+  but reject journal writes.
 - `DRX_S3_FORCE_PATH_STYLE=0` is now honoured by the bootstrap S3 probe
   (`base/lib/s3_probe.php`) and the generated s3fs settings
   (`base/lib/settings.sh`). `getenv() ?: ''` discarded the falsy `"0"`, so
