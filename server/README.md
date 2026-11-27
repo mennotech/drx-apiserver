@@ -213,8 +213,10 @@ JSON export per row. The exported document includes:
 - A `dev_restore_hint.shell` one-liner for a direct
   `litestream restore -txid …` invocation.
 - A `dev_restore_hint.docker_env` block that maps directly onto the
-  base image's runtime contract (`DRX_LITESTREAM_RESTORE_ON_BOOT=always`
-  plus `DRX_LITESTREAM_RESTORE_TXID`), so a fresh container can
+  base image's runtime contract (`DRX_S3_BUCKET` and
+  `DRX_S3_PREFIX_LITESTREAM`, from which bootstrap derives the replica
+  URL, plus `DRX_LITESTREAM_RESTORE_ON_BOOT=always` and
+  `DRX_LITESTREAM_RESTORE_TXID`), so a fresh container can
   reproduce that exact state.
 
 ### Restoring a marker on a dev machine

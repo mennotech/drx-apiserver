@@ -47,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `drx_litestream` marker export now falls back to the marker id for the
   `Content-Disposition` filename when the sanitised label is empty (or
   `preg_replace()` fails), instead of producing `marker-.json`.
+- `drx_litestream` marker export `dev_restore_hint.docker_env` now emits
+  `DRX_S3_BUCKET` and `DRX_S3_PREFIX_LITESTREAM` (from the recorded
+  source values, or parsed from the marker's replica URL) instead of
+  `DRX_LITESTREAM_REPLICA_URL`, which bootstrap derives and overwrites
+  from the shared `DRX_S3_*` contract.
 - `drx_litestream` snapshot verification now falls back to the daemon's
   `replicated_txid` (from `litestream sync -wait`) when `litestream ltx`
   cannot enumerate remote LTX files in the current CLI environment

@@ -227,6 +227,18 @@ class MarkerController extends ControllerBase {
       }
     }
 
+    // Bootstrap derives the replica URL from DRX_S3_BUCKET and
+    // DRX_S3_PREFIX_LITESTREAM and overwrites DRX_LITESTREAM_REPLICA_URL, so
+    // the hint must carry those two values. Prefer the recorded source values
+    // and fall back to parsing the marker's replica URL (live markers).
+    $bucket = (string) ($m['bucket'] ?? '');
+    $prefix = (string) ($m['s3_prefix_litestream'] ?? '');
+    if (($bucket === '' || $prefix === '')
+      && preg_match('#^s3://([^/]+)/?(.*)$#', (string) ($m['replica_url'] ?? ''), $parts)) {
+      $bucket = $bucket !== '' ? $bucket : $parts[1];
+      $prefix = $prefix !== '' ? $prefix : trim($parts[2], '/');
+    }
+
     $payload['dev_restore_hint'] = [
       'shell' => sprintf(
         'litestream restore -txid %s -o ./dev.sqlite %s',
@@ -234,12 +246,13 @@ class MarkerController extends ControllerBase {
         escapeshellarg($m['replica_url'] ?? ''),
       ),
       'docker_env' => [
-        'DRX_LITESTREAM_REPLICA_URL' => $m['replica_url'] ?? '',
+        'DRX_S3_BUCKET' => $bucket,
+        'DRX_S3_PREFIX_LITESTREAM' => $prefix,
         'DRX_LITESTREAM_RESTORE_ON_BOOT' => 'always',
         'DRX_LITESTREAM_RESTORE_TXID' => $m['txid'] ?? '',
       ],
       'note' => $kind === 'consistent'
-        ? 'For full point-in-time restore (DB + files), clone the source bucket up to consistent_at (using S3 object versions) into a new bucket, then boot a fresh image with DRX_S3_BUCKET=<new-bucket> plus the docker_env above.'
+        ? 'For full point-in-time restore (DB + files), clone the source bucket up to consistent_at (using S3 object versions) into a new bucket, then boot a fresh image with the docker_env above, overriding DRX_S3_BUCKET with <new-bucket>.'
         : 'Live markers pin only the DB TXID. File state is whatever is currently in the bucket.',
     ];
 
