@@ -19,6 +19,11 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- `minio-init` in [server/docker-compose.yml](server/docker-compose.yml) now
+  fails (with the `mc` error visible) when the anonymous-read policy on the
+  public prefix cannot be applied. Previously the failure was swallowed and
+  the final `echo` made the container exit successfully, so the backend
+  started with unreadable public attachments.
 - [server/docker-compose.yml](server/docker-compose.yml) now binds the local
   S3 sidecar ports (`9000` API, `9001` console) to `127.0.0.1`. They were
   published on every host interface while the root credentials default to
