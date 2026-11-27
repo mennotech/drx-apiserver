@@ -19,6 +19,11 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- [server/docker-compose.yml](server/docker-compose.yml) now binds the local
+  S3 sidecar ports (`9000` API, `9001` console) to `127.0.0.1`. They were
+  published on every host interface while the root credentials default to
+  `minioadmin`, exposing read/write access to the database replica and
+  private uploads to anyone who could reach the host.
 - The fresh-container restore recipe in [server/README.md](server/README.md)
   now passes `DRX_S3_PREFIX_LITESTREAM`, since bootstrap derives the
   replica URL from the bucket plus that prefix; without it a marker captured

@@ -16,9 +16,11 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      # Console UI at http://localhost:9001 ; S3 API on :9000.
-      - "9000:9000"
-      - "9001:9001"
+      # Console UI at http://localhost:9001 ; S3 API on :9000. Bound to
+      # loopback because the root credentials default to minioadmin; expose
+      # more widely only via a compose override with protected credentials.
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - backend_minio:/data
     restart: unless-stopped
@@ -32,7 +34,7 @@ services:
             sh -c "until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} >/dev/null 2>&1; do sleep 1; done;
               mc mb -p local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
              mc version enable local/${DRX_S3_BUCKET:-drx-data-local} >/dev/null 2>&1 || true;
-              mc anonymous set download local/${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_PUBLIC:-public} >/dev/null 2>&1 || true;
+              mc anonymous set download local/${DRX_S3_BUCKET:-drx-data-local}/${DRX_S3_PREFIX_PUBLIC:-public} || { echo 'minio-init: failed to set the anonymous-read policy' >&2; exit 1; };
              echo \"minio-init: bucket ${DRX_S3_BUCKET:-drx-data-local} ready (versioning enabled; anonymous read on ${DRX_S3_PREFIX_PUBLIC:-public}/)\""
     restart: 'no'
 
