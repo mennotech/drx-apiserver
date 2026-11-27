@@ -77,7 +77,7 @@ Local orchestration is via [Makefile](Makefile):
 | `make up`    | Bring up the reference app via Docker Compose (no rebuild). |
 | `make up-build` | Rebuild the reference app, then bring it up.        |
 | `make down`  | Stop the reference app.                                 |
-| `make up-base` | Run only the base image (no reference overlay).      |
+| `make up-base` | Run only the base image (uses the same admin password as `make up`). |
 | `make down-base` | Stop the base-only container started by `make up-base`. |
 | `make smoke` | Boot the base image and wait for healthcheck `healthy`. |
 | `make clean` | Remove build artifacts and local image tags.            |
@@ -110,6 +110,9 @@ the compose definition and its build context live in [server/](server/),
 and supported local workflows run via `make` from the repository root.
 If a root `.env` exists, Make passes it explicitly to Compose. Override
 `COMPOSE_ENV_FILE` to select another environment file.
+`make up-base` passes the same environment file to the container engine.
+Set `DRUPAL_ADMIN_PASS` in that file (or in the shell); there is no separate
+base-only password or development-password fallback.
 
 The reference app expects `DRUPAL_ADMIN_PASS` to be set (in `.env` or the
 shell). Run `make build` before `make up`; the latter does not rebuild the

@@ -30,6 +30,8 @@ versioned — entries are grouped by the date of the corresponding
 - Recreate existing Podman Compose containers on `make up` to avoid name
   collisions in `podman-compose` 1.3.0, without emitting teardown errors on
   a fresh start; named volumes are retained.
+- Make `make up-base` use the shared `DRUPAL_ADMIN_PASS` from the selected
+  environment file or shell, with no separate base-only password fallback.
 
 ---
 

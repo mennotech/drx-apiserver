@@ -18,7 +18,6 @@ APP_IMAGE    ?= drx-apiserver-demo:dev
 SMOKE_PORT   ?= 8089
 BASE_UP_PORT ?= 8087
 BASE_UP_CONTAINER ?= drx-base
-BASE_UP_ADMIN_PASS ?= dev-password
 VERSION      ?= 0.0.0-dev
 VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -76,7 +75,8 @@ down:
 up-base: base
 	@$(CONTAINER_ENGINE) rm -f $(BASE_UP_CONTAINER) >/dev/null 2>&1 || true
 	$(CONTAINER_ENGINE) run -d --name $(BASE_UP_CONTAINER) \
-		-e DRUPAL_ADMIN_PASS=$(BASE_UP_ADMIN_PASS) \
+		$(if $(strip $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE)) \
+		$(if $(filter undefined,$(origin DRUPAL_ADMIN_PASS)),,-e DRUPAL_ADMIN_PASS) \
 		-p $(BASE_UP_PORT):80 $(BASE_IMAGE)
 
 down-base:
