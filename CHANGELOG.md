@@ -19,6 +19,10 @@ versioned — entries are grouped by the date of the corresponding
 
 ### Fixed
 
+- The fresh-container restore recipe in [server/README.md](server/README.md)
+  now passes `DRX_S3_PREFIX_LITESTREAM`, since bootstrap derives the
+  replica URL from the bucket plus that prefix; without it a marker captured
+  under a non-default prefix could not be reproduced.
 - Reference-app seed hook
   ([server/hooks/post-config-import.d/20-seed-notes.sh](server/hooks/post-config-import.d/20-seed-notes.sh))
   now checks the result of `FileSystem::prepareDirectory()` and throws a

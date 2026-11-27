@@ -237,6 +237,7 @@ Two equivalent paths, both using values from the exported JSON:
    ```sh
    docker run --rm \
      -e DRX_S3_BUCKET=<BUCKET> \
+     -e DRX_S3_PREFIX_LITESTREAM=<LITESTREAM_PREFIX> \
      -e DRX_S3_ENDPOINT=<S3_ENDPOINT> \
      -e DRX_S3_REGION=<S3_REGION> \
      -e DRX_S3_ACCESS_KEY_ID=<key> \
@@ -249,6 +250,11 @@ Two equivalent paths, both using values from the exported JSON:
    The bootstrap clears the local DB (because the policy is `always`),
    then runs `litestream restore -txid <TXID>` before Drupal install
    detection, so the site comes up at exactly the captured state.
+   `<LITESTREAM_PREFIX>` is the marker's `source.prefixes.litestream`
+   (consistent markers) or the path part of its `replica_url`; bootstrap
+   derives the replica URL from the bucket plus this prefix, so omitting it
+   searches the default `litestream/` prefix and cannot reproduce a database
+   captured under a different one.
 
 ### Automated drills
 
