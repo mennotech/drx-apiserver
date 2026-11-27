@@ -17,6 +17,19 @@ use Drupal\file\FileStorage;
  * already deleted without a durable event. Writing the event here, before
  * parent::delete(), keeps the strict-audit guarantee: if the journal write
  * throws, nothing has been deleted.
+ *
+ * The journal is append-only, so a written event cannot be taken back.
+ * Files are therefore journaled and deleted one at a time: if the journal
+ * write for a later file in a bulk delete fails, earlier files are already
+ * fully deleted and journaled, and the failing file is neither journaled nor
+ * deleted. Batching the writes would leave events for files that were never
+ * deleted.
+ *
+ * Known residual window: if the journal write succeeds but the subsequent
+ * parent::delete() throws (for example a database error), the journal holds
+ * a delete event for a file that may still exist. Replay tooling should
+ * confirm a delete against the restored database or object before applying
+ * it.
  */
 class JournalingFileStorage extends FileStorage {
 
@@ -29,8 +42,8 @@ class JournalingFileStorage extends FileStorage {
       if ($entity instanceof FileInterface) {
         $journal->record('delete', $entity);
       }
+      parent::delete([$entity]);
     }
-    parent::delete($entities);
   }
 
 }

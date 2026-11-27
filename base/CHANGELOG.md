@@ -44,6 +44,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_s3_journal` bulk file deletes are now journaled and deleted one file
+  at a time. Journaling the whole batch first meant a journal failure on a
+  later file left immutable `delete` events for earlier files that were
+  never deleted, which a snapshot-boundary replay would apply to files that
+  still exist. Residual window: if the journal write succeeds but the core
+  delete then throws (e.g. a database error), the journal holds a `delete`
+  event for a file that may still exist, so replay tooling should confirm a
+  delete against the restored database or object before applying it.
 - `drx_s3_journal` now journals file deletions *before* the S3 object is
   removed. Core's `File::preDelete()` deletes the object before
   `hook_entity_predelete()`/`hook_entity_delete()` run, so a failed journal
