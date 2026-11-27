@@ -44,6 +44,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- Generated `settings.php` now sets `$settings['s3fs.upload_as_private']
+  = TRUE`. With `FALSE`, s3fs requested a `public-read` ACL for every
+  `public://` upload, which the ACL-disabled (Bucket owner enforced)
+  bucket required by this image rejects. Public/private routing per field
+  is unchanged and anonymous reads still come from the public-prefix
+  bucket policy. Applies to newly generated `settings.php` files
+  (`settings.php` is written once).
 - When S3 is required (`DRX_S3_REQUIRED=1`), a failure to enable the
   `s3fs` module now aborts bootstrap (with Drush's output preserved)
   instead of warning and continuing on local file storage that is lost

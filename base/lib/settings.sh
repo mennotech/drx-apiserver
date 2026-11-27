@@ -17,7 +17,9 @@ drx::settings::_s3_block() {
 // Security posture: private files are stored under the private prefix
 // and served only via Drupal access checks. Public files live under a
 // separate prefix that the bucket policy exposes to anonymous GET.
-// Upload visibility is decided per field (no global force-private).
+// Upload visibility is decided per field (no global force-private); objects
+// are uploaded without ACLs and the public prefix is exposed by the bucket
+// policy.
 if (getenv('DRX_S3_REQUIRED') !== '0') {
   $settings['s3fs.access_key']         = getenv('DRX_S3_ACCESS_KEY_ID') ?: '';
   $settings['s3fs.secret_key']         = getenv('DRX_S3_SECRET_ACCESS_KEY') ?: '';
@@ -28,8 +30,13 @@ if (getenv('DRX_S3_REQUIRED') !== '0') {
   // Take over both stream wrappers so every file routes through S3.
   $settings['s3fs.use_s3_for_public']  = TRUE;
   $settings['s3fs.use_s3_for_private'] = TRUE;
-  // Respect per-field public/private choice (do not force everything private).
-  $settings['s3fs.upload_as_private']  = FALSE;
+  // Make s3fs upload objects without an ACL. The bucket must have ACLs
+  // disabled (Bucket owner enforced, see base/README.md), and with this
+  // set to FALSE s3fs requests a public-read ACL for every public://
+  // upload, which such a bucket rejects. This does NOT force fields to
+  // private://: public/private routing stays per field, and anonymous
+  // reads of the public prefix are granted by the bucket policy.
+  $settings['s3fs.upload_as_private']  = TRUE;
 
   // Connection details flow from env into s3fs module config. These
   // overrides survive config import — operator changes in the UI will
