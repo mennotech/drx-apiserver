@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- Litestream `if-empty` restores now use `-force` instead of
+  `-if-db-not-exists`, so an existing but empty SQLite file (no tables)
+  no longer makes bootstrap skip the restore and install a new site; a
+  populated database is still never overwritten.
 - Pinned Litestream restores (`DRX_LITESTREAM_RESTORE_TXID` /
   `DRX_LITESTREAM_RESTORE_TIMESTAMP`) no longer pass `-if-replica-exists`.
   A requested backup that is unavailable now fails bootstrap instead of

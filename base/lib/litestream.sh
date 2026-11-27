@@ -155,8 +155,11 @@ drx::litestream::restore() {
     # (first boot of a brand-new deployment). It is reserved for unpinned
     # restores: when a TXID/timestamp was explicitly requested, a missing
     # backup must fail the restore instead of installing a new site.
-    # -if-db-not-exists guards against clobbering a populated local DB in
-    # the if-empty branch.
+    # -if-db-not-exists is deliberately NOT used in the if-empty branch: it
+    # skips any existing file, including an empty one, so bootstrap would
+    # install a new site instead of recovering the replica. The populated
+    # guard above already returned for a real database, so -force only ever
+    # replaces an absent/empty database and its SQLite sidecar files.
     local restore_flags=()
     if [ ${#pin_flags[@]} -eq 0 ]; then
         restore_flags+=(-if-replica-exists)
@@ -164,7 +167,7 @@ drx::litestream::restore() {
         restore_flags+=("${pin_flags[@]}")
     fi
     if [ "${policy}" = "if-empty" ]; then
-        restore_flags+=(-if-db-not-exists)
+        restore_flags+=(-force)
     fi
     if sudo -E -u www-data litestream restore \
             -config "${DRX_LITESTREAM_CONFIG_FILE}" \
