@@ -120,7 +120,7 @@ Then run the export, review the diff, and commit `schema/` and
 From the repo root (supported path; compose is invoked by `make`):
 
 ```sh
-make build        # build drx-apiserver:dev on top of drx-apiserver:dev
+make build        # build drx-apiserver-demo:dev on top of drx-apiserver:dev
 make up           # docker compose up -d
 curl -s http://localhost:8088/jsonapi/node/note | jq '.data[].attributes.title'
 make down

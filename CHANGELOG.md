@@ -21,6 +21,15 @@ versioned — entries are grouped by the date of the corresponding
 
 - Made the Composer build stage explicit so Podman can build the base image
   without requiring a pre-pulled `composer:2` image.
+- Made Compose file and build-context paths compatible with `podman-compose`
+  while retaining root `.env` support and the no-build behavior of `make up`.
+- Added a complete reference environment example and an explicit password
+  check for `podman-compose` versions that mishandle unset defaults.
+- Routed Compose through `podman-remote` when that engine is selected, avoiding
+  local container name conflicts and split local/remote image builds.
+- Recreate existing Podman Compose containers on `make up` to avoid name
+  collisions in `podman-compose` 1.3.0, without emitting teardown errors on
+  a fresh start; named volumes are retained.
 
 ---
 

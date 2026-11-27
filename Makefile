@@ -24,19 +24,21 @@ VCS_REF      := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Container engine selection. Defaults to docker; set CONTAINER_ENGINE=podman
-# to drive the same targets through rootless or rootful Podman. COMPOSE is
-# split out so users can pair `podman` with whichever compose front-end they
-# have available (`podman compose`, `podman-compose`, ...).
+# to drive the same targets through rootless or rootful Podman. For
+# podman-remote, use podman-compose with its remote executable explicitly.
+# COMPOSE can be overridden to select another compose front-end.
 #
 # `make scan` is engine-agnostic by design: it pipes
 # `$(CONTAINER_ENGINE) save` into Trivy on stdin, so no container socket
 # needs to be mounted or auto-detected. Junior devs can run
 # `make verify CONTAINER_ENGINE=podman` with no other configuration.
-CONTAINER_ENGINE  ?= docker
-COMPOSE           ?= $(CONTAINER_ENGINE) compose
+CONTAINER_ENGINE  ?= podman-remote
+COMPOSE           ?= $(if $(filter podman-remote,$(notdir $(CONTAINER_ENGINE))),podman-compose --podman-path $(shell command -v $(CONTAINER_ENGINE) 2>/dev/null || printf '%s' $(CONTAINER_ENGINE)),$(CONTAINER_ENGINE) compose)
 COMPOSE_FILE      ?= server/docker-compose.yml
 COMPOSE_PROJECT   ?= drx-apiserver
-COMPOSE_ARGS      ?= -f $(COMPOSE_FILE) --project-directory . -p $(COMPOSE_PROJECT)
+COMPOSE_ENV_FILE  ?= $(if $(wildcard .env),.env)
+COMPOSE_ARGS      ?= -f $(abspath $(COMPOSE_FILE)) $(if $(strip $(COMPOSE_ENV_FILE)),--env-file $(abspath $(COMPOSE_ENV_FILE))) -p $(COMPOSE_PROJECT)
+UP_ARGS           ?= $(if $(filter podman podman-remote,$(notdir $(CONTAINER_ENGINE))),auto)
 
 # Trivy invocation must stay in lock-step with .github/workflows/base-image.yml.
 TRIVY_VERSION  ?= 0.70.0
@@ -58,7 +60,13 @@ app: base
 build: app
 
 up:
-	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build -d
+	@up_args='$(UP_ARGS)'; \
+	if [ "$$up_args" = auto ]; then \
+		containers=$$($(CONTAINER_ENGINE) ps -aq --filter "label=io.podman.compose.project=$(COMPOSE_PROJECT)") || exit 1; \
+		if [ -n "$$containers" ]; then up_args=--force-recreate; else up_args=; fi; \
+	fi; \
+	echo "Starting Compose project $(COMPOSE_PROJECT) using $(CONTAINER_ENGINE)..."; \
+	APP_IMAGE=$(APP_IMAGE) $(COMPOSE) $(COMPOSE_ARGS) up --no-build $$up_args -d
 
 up-build: app up
 

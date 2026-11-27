@@ -87,19 +87,39 @@ command line if needed, e.g. `make base VERSION=0.2.0-dev`.
 
 The Makefile is engine-agnostic: set `CONTAINER_ENGINE=podman` (and,
 optionally, `COMPOSE="podman compose"`) to drive every target through
-Podman. `make scan` does not need a container API socket — it exports
+Podman. For `CONTAINER_ENGINE=podman-remote`, the default Compose
+command is `podman-compose --podman-path /path/to/podman-remote`, so builds
+and containers use the same remote engine. This requires `podman-compose`
+on the local machine; if overriding `COMPOSE`, ensure the chosen provider
+also targets the remote engine. `make scan` does not need a container API socket — it exports
 the image with `$(CONTAINER_ENGINE) save` into a host tempdir and feeds
 it to Trivy via `--input`, so `make verify CONTAINER_ENGINE=podman`
 works the same on Docker, macOS/Windows `podman machine`, and rootless
 or rootful Linux Podman. CI still runs the Docker path.
 
+For Podman, `make up` recreates existing Compose containers without
+rebuilding the image or removing named volumes. This avoids name collisions
+with `podman-compose` 1.3.0 on repeated starts without attempting a teardown
+when no containers exist. Set `UP_ARGS` to override the automatic behavior
+(for example, `UP_ARGS=` disables recreation). If switching engines,
+stop the old project with `make down CONTAINER_ENGINE=podman` before
+starting the remote project, to release any locally occupied ports.
+
 Compose orchestration is intentionally rooted in [Makefile](Makefile):
-the compose definition lives in [server/docker-compose.yml](server/docker-compose.yml),
+the compose definition and its build context live in [server/](server/),
 and supported local workflows run via `make` from the repository root.
+If a root `.env` exists, Make passes it explicitly to Compose. Override
+`COMPOSE_ENV_FILE` to select another environment file.
 
 The reference app expects `DRUPAL_ADMIN_PASS` to be set (in `.env` or the
-shell). See [server/docker-compose.yml](server/docker-compose.yml) for the full set of
-overridable variables.
+shell). Run `make build` before `make up`; the latter does not rebuild the
+image. See [server/docker-compose.yml](server/docker-compose.yml) for the
+full set of overridable variables.
+
+`podman-compose` 1.3.0 can leave unset environment defaults uninterpolated.
+When using that provider, copy [.env.example](.env.example) to `.env`,
+set the admin password, and keep the other reference app variables defined
+even when using their defaults.
 
 ---
 

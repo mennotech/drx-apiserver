@@ -5,10 +5,12 @@
 # itself is built via the project Makefile (`make base`) or, in
 # production, pulled from the published registry.
 
+x-require-admin-password: ${DRUPAL_ADMIN_PASS:?Set DRUPAL_ADMIN_PASS in .env before starting the backend}
+
 services:
   drx-apiserver:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${DRX_BASE_IMAGE:-drx-apiserver:dev}
