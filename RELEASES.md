@@ -46,6 +46,12 @@ Mapping:
 Drupal core minor and patch updates flow through as base-image **patch or
 minor** releases unless they break the documented contract.
 
+While the project is on `0.x` (initial development), the runtime contract is
+not yet frozen: a backward-incompatible change may ship in a **MINOR**
+release instead of a MAJOR one. Such changes are still called out at the top
+of the release's section in [base/CHANGELOG.md](base/CHANGELOG.md). `1.0.0`
+marks the point at which the strict mapping above applies.
+
 ---
 
 ## Tag policy
@@ -129,7 +135,9 @@ scan blocks the release.
 
 Release candidates (`vX.Y.Z-rcN`) are optional and used when a release
 introduces non-trivial contract changes that benefit from external
-validation before floating tags move.
+validation before floating tags move. A first release in a new `0.x` minor
+line (for example `v0.1.0-rc1`) is published this way so it can be
+exercised in real-world environments before a stable tag moves `latest`.
 
 ---
 

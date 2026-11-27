@@ -20,8 +20,10 @@ Older lines are out of operational support unless explicitly called out in
 release notes.
 
 While the project remains on `0.x`, release candidates may be the only
-available tags in a line. In that case, monitoring falls back to the latest
-available `-rc` tag(s) until stable `vX.Y.Z` releases exist.
+available tags in a line (for example `v0.1.0-rc1`). In that case,
+monitoring falls back to the latest available `-rc` tag(s) until stable
+`vX.Y.Z` releases exist. Release candidates are intended for pre-production
+validation (see [RELEASES.md](RELEASES.md#pre-releases)).
 
 ---
 

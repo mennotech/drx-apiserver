@@ -89,6 +89,7 @@ All variables are optional except where marked.
 | `FRONTEND_URL`          | `http://localhost:3000`  | Default CORS allowed origin if no override.        |
 | `CORS_ALLOWED_ORIGINS`  | _(unset)_                | Comma-separated list. Overrides `FRONTEND_URL`.    |
 | `DRUPAL_TRUSTED_HOST_PATTERNS` | _(unset)_         | Comma-separated regex strings appended to defaults.|
+| `DRX_REVERSE_PROXY_IPS` | _(unset)_                | Comma-separated proxy IPs / CIDR ranges Drupal trusts for `X-Forwarded-For` (`reverse_proxy_addresses`). Written to `trusted-hosts.settings.php`; takes effect on the next container restart. Needed so the client IP seen by the [Litestream HTTP API](#litestream-http-api) allowlist is the real caller behind a proxy. |
 
 ### Database
 
@@ -263,6 +264,9 @@ ignores these settings.
 | `DRX_LITESTREAM_CLEAR_MAINTENANCE`    | `1`                  | After a successful restore, clear `system.maintenance_mode` from the restored DB before Apache starts. Set to `0` to leave whatever value was in the snapshot in place (useful when restoring deliberately into maintenance). |
 | `DRX_LITESTREAM_CONTROL_SOCKET`       | `/var/run/litestream.sock` | Path of the litestream daemon's control socket. Used by snapshot tooling running as a non-root user inside the container to call `litestream sync` / `litestream info`. Set to an empty string to disable the socket. |
 | `DRX_LITESTREAM_CONTROL_SOCKET_PERMS` | `0666`               | File mode on the control socket. `0666` lets the orchestrator (running as `www-data`) connect without extra chown plumbing; the socket only exposes intra-container RPCs so this is acceptable. |
+| `DRX_LITESTREAM_REMOTE_SIZE_TTL`      | `900`                | Seconds to cache the computed remote replica size (shown in the `drx_litestream` admin UI) before re-listing the bucket. Non-positive or non-numeric values fall back to `900`. |
+| `DRX_LITESTREAM_API_TOKEN`            | _(unset)_            | Shared secret for the [Litestream HTTP API](#litestream-http-api) (`Authorization: Bearer <token>`). When empty/unset the API is unconfigured and every request gets `403`. Use a random secret of at least 128 bits. |
+| `DRX_LITESTREAM_API_ALLOWED_IPS`      | `127.0.0.1,::1`      | Comma-separated client IPs / CIDR ranges allowed to call the HTTP API (IPv4, IPv6, CIDR). Checked before the token. Behind a proxy, also set `DRX_REVERSE_PROXY_IPS`. |
 
 The image does not source cloud-provider credential helpers; provide
 `DRX_S3_ACCESS_KEY_ID` and `DRX_S3_SECRET_ACCESS_KEY` directly via your
@@ -274,6 +278,23 @@ lives in the first-party `drx_litestream` module that ships with the
 image at
 [base/modules/drx_litestream](modules/drx_litestream); the reference
 overlay enables it via [server/hooks/post-modules.d/30-enable-drx-litestream.sh](../server/hooks/post-modules.d/30-enable-drx-litestream.sh).
+
+#### Litestream HTTP API
+
+For external monitoring (Zabbix, Uptime Kuma) and snapshot orchestration
+(Kubernetes CronJob, CI, webhooks), the `drx_litestream` module exposes two
+endpoints. Both require `Authorization: Bearer $DRX_LITESTREAM_API_TOKEN` and
+a client IP in `DRX_LITESTREAM_API_ALLOWED_IPS`; otherwise they return `403`.
+
+| Endpoint                           | Purpose                                                                                       | Responses                                                                |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET /drx-litestream/v1/status`    | JSON health summary (`state`, `enabled`, `replicating`, `issues`, `latest_verified_marker`).   | `200` when enabled and replicating; `503` when disabled or the daemon is down. |
+| `POST /drx-litestream/v1/snapshot` | Capture an application-consistent snapshot. Body `{"label": "...", "description": "...", "notes": "..."}` (`label` required; may also be a `?label=` query parameter). | `200` with `{id, state, db_txid, consistent_at, manifest_key}`; `400`/`500`/`503` with `{state: "failed", error}`. |
+
+Snapshots run synchronously and can take 30–90 s, so set the client timeout
+accordingly. Running them through the API (inside the Apache process tree,
+which has the `DRX_S3_*` credentials) gives the full TXID verification path,
+unlike `docker exec ... drush drx:litestream:snapshot`.
 
 ---
 

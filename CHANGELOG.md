@@ -17,8 +17,15 @@ versioned — entries are grouped by the date of the corresponding
 
 ## [Unreleased]
 
+## [2026-11-27] (drx-apiserver v0.1.0-rc1)
+
 ### Fixed
 
+- [RELEASES.md](RELEASES.md) now documents the `0.x` versioning policy
+  (backward-incompatible contract changes may ship in a MINOR release until
+  `1.0.0`) and that a first release in a new `0.x` line is published as a
+  release candidate for real-world validation; [SUPPORT.md](SUPPORT.md)
+  clarifies that release candidates are for pre-production validation.
 - `minio-init` in [server/docker-compose.yml](server/docker-compose.yml) now
   fails (with the `mc` error visible) when the anonymous-read policy on the
   public prefix cannot be applied. Previously the failure was swallowed and

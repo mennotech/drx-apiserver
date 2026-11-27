@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.1.0-rc1] - 2026-11-27
+
+> **Upgrading from 0.0.3-rc3:** S3 storage is now mandatory. Set `DRX_S3_BUCKET`,
+> `DRX_S3_ACCESS_KEY_ID`, `DRX_S3_SECRET_ACCESS_KEY` against a *versioned* bucket
+> (`DRX_S3_REQUIRED=0` bypasses this for CI only). Litestream restore, snapshots,
+> and the `drx_s3_journal` module build on that contract; see `base/README.md`.
+> This is a release candidate on `0.x`: the runtime contract may still change
+> between minor versions pending real-world testing. The unpublished 0.0.4-rc4
+> and 0.0.5-rc5 work is included below and in the `0.0.5-rc5` section.
+
 ### Added
 - New Drush commands in `drx_litestream`: `drx:litestream:status`,
   `drx:litestream:info`, `drx:litestream:sync`, `drx:litestream:markers`,
@@ -44,6 +54,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- Documented the previously undocumented user-facing runtime variables
+  `DRX_LITESTREAM_API_TOKEN`, `DRX_LITESTREAM_API_ALLOWED_IPS`,
+  `DRX_LITESTREAM_REMOTE_SIZE_TTL` and `DRX_REVERSE_PROXY_IPS`, and the
+  Litestream HTTP API (`/drx-litestream/v1/status`, `/snapshot`), in
+  `base/README.md`.
 - The bootstrap S3 probe (`base/lib/s3_probe.php`) now rejects a
   `DRX_S3_ENDPOINT` containing a path, query, or fragment, exactly like the
   runtime S3 writers (`JournalWriter`, `SnapshotManifestWriter`,
