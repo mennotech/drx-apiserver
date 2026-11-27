@@ -44,6 +44,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_s3_journal` now journals file deletions *before* the S3 object is
+  removed. Core's `File::preDelete()` deletes the object before
+  `hook_entity_predelete()`/`hook_entity_delete()` run, so a failed journal
+  write used to roll back the database row but leave the content already
+  deleted with no durable event. A new `JournalingFileStorage` (swapped in
+  via `hook_entity_type_alter()` when the stock core file storage is in
+  use) writes the `delete` event before `parent::delete()`; a journal
+  failure now aborts the delete with the object and row intact.
+  `hook_entity_delete()` remains only as a fallback when another module
+  supplies its own file storage class.
 - The `drx_litestream` Drush marker manifest hint (and the API docs' example
   `manifest_key`) now reports `snapshots/<...>.json`, matching where
   `SnapshotManifestWriter` actually stores manifests, instead of prefixing

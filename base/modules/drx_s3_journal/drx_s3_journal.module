@@ -7,14 +7,18 @@
  * Emits one immutable JSON object to s3://$DRX_S3_BUCKET/<journal-prefix>/...
  * per file entity create/update/delete for the public:// and private://
  * streams. Strict audit: any write failure aborts the surrounding
- * Drupal request via an uncaught exception.
+ * Drupal request via an uncaught exception. Deletions are journaled by
+ * JournalingFileStorage::delete() before core's File::preDelete() removes the
+ * S3 object, so a failed journal write never leaves deleted content behind.
  */
 
 declare(strict_types=1);
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\drx_s3_journal\Entity\JournalingFileStorage;
 use Drupal\file\FileInterface;
+use Drupal\file\FileStorage;
 
 /**
  * Implements hook_help().
@@ -53,14 +57,34 @@ function drx_s3_journal_entity_update(EntityInterface $entity): void {
 }
 
 /**
+ * Implements hook_entity_type_alter().
+ *
+ * Swaps in a file storage handler that journals deletions before core's
+ * File::preDelete() removes the S3 object. Only the stock core storage is
+ * replaced; if another module already supplies a custom file storage class
+ * the delete hook below remains the (post-removal) fallback.
+ */
+function drx_s3_journal_entity_type_alter(array &$entity_types): void {
+  if (isset($entity_types['file']) && $entity_types['file']->getStorageClass() === FileStorage::class) {
+    $entity_types['file']->setStorageClass(JournalingFileStorage::class);
+  }
+}
+
+/**
  * Implements hook_entity_delete().
  *
- * Captures the journal record from the in-memory FileInterface before
- * Drupal removes the row, so the event payload still has uri/filename/
- * mime/size for replay.
+ * Fallback only: deletions are normally journaled before removal by
+ * JournalingFileStorage::delete(). When another module has replaced the
+ * file storage class this records the event from the in-memory
+ * FileInterface before Drupal removes the row, so the payload still has
+ * uri/filename/mime/size for replay.
  */
 function drx_s3_journal_entity_delete(EntityInterface $entity): void {
-  if ($entity instanceof FileInterface) {
-    \Drupal::service('drx_s3_journal.journal')->record('delete', $entity);
+  if (!$entity instanceof FileInterface) {
+    return;
   }
+  if (\Drupal::entityTypeManager()->getStorage('file') instanceof JournalingFileStorage) {
+    return;
+  }
+  \Drupal::service('drx_s3_journal.journal')->record('delete', $entity);
 }
