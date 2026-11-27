@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_litestream` snapshot manifest uploads (`SnapshotManifestWriter`) now
+  honour an explicit `DRX_S3_FORCE_PATH_STYLE=false|0|no` against a custom
+  endpoint by using virtual-hosted addressing, matching the bootstrap probe
+  and Litestream.
 - `drx_s3_journal` writes (`JournalWriter`) now honour an explicit
   `DRX_S3_FORCE_PATH_STYLE=false|0|no` against a custom endpoint by using
   virtual-hosted addressing (bucket-prefixed host in the URL and signature,

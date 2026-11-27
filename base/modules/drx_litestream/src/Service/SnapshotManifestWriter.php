@@ -258,6 +258,14 @@ class SnapshotManifestWriter {
     $region = getenv('DRX_S3_REGION') ?: 'us-east-1';
     $encodedKey = implode('/', array_map('rawurlencode', explode('/', ltrim($key, '/'))));
 
+    // Same addressing rules as base/lib/s3_probe.php: an explicit
+    // DRX_S3_FORCE_PATH_STYLE wins (true/1/yes => path-style, anything else
+    // => virtual-hosted); otherwise path-style only for custom endpoints.
+    $forcePath = strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE'));
+    $usePath = $forcePath === ''
+      ? $endpoint !== ''
+      : in_array($forcePath, ['1', 'true', 'yes'], TRUE);
+
     if ($endpoint !== '') {
       $base = rtrim($endpoint, '/');
       $epParts = parse_url($base);
@@ -271,26 +279,23 @@ class SnapshotManifestWriter {
       if (isset($epParts['query']) || isset($epParts['fragment'])) {
         throw new \RuntimeException('DRX_S3_ENDPOINT must not include query or fragment components');
       }
-      $host = ($epParts['host'] ?? '') . (isset($epParts['port']) ? ':' . $epParts['port'] : '');
-      $canonicalUri = '/' . rawurlencode($bucket) . '/' . $encodedKey;
-      return [$base, $host, $canonicalUri];
+      $scheme = (string) ($epParts['scheme'] ?? 'https');
+      $hostPort = $epParts['host'] . (isset($epParts['port']) ? ':' . $epParts['port'] : '');
+    }
+    else {
+      $scheme = 'https';
+      $hostPort = "s3.{$region}.amazonaws.com";
     }
 
-    // No custom endpoint: AWS. Virtual-hosted style by default; path-style
-    // when DRX_S3_FORCE_PATH_STYLE is explicitly enabled (needed for bucket
-    // names that break virtual-hosted HTTPS, e.g. names containing dots).
-    $forcePath = in_array(strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE')), ['1', 'true', 'yes'], TRUE);
-    if ($forcePath) {
-      $base = "https://s3.{$region}.amazonaws.com";
-      $host = "s3.{$region}.amazonaws.com";
+    if ($usePath) {
       $canonicalUri = '/' . rawurlencode($bucket) . '/' . $encodedKey;
-      return [$base, $host, $canonicalUri];
+      return ["{$scheme}://{$hostPort}", $hostPort, $canonicalUri];
     }
 
-    $base = "https://{$bucket}.s3.{$region}.amazonaws.com";
-    $host = "{$bucket}.s3.{$region}.amazonaws.com";
-    $canonicalUri = '/' . $encodedKey;
-    return [$base, $host, $canonicalUri];
+    // Virtual-hosted: the bucket prefixes the host in both the URL and the
+    // signed Host header, and is omitted from the canonical URI.
+    $host = "{$bucket}.{$hostPort}";
+    return ["{$scheme}://{$host}", $host, '/' . $encodedKey];
   }
 
 }
