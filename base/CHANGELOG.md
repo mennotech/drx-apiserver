@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- The `drx_litestream` marker form now rejects capture when no replica
+  TXID is available (replication disabled, empty replica, or LTX read
+  failure) instead of saving a "successful" marker with an empty TXID
+  whose restore settings would request the latest database.
 - Generated `settings.php` now sets `$settings['s3fs.upload_as_private']
   = TRUE`. With `FALSE`, s3fs requested a `public-read` ACL for every
   `public://` upload, which the ACL-disabled (Bucket owner enforced)

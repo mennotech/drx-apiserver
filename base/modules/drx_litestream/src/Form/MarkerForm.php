@@ -95,9 +95,26 @@ class MarkerForm extends FormBase {
   /**
    * {@inheritdoc}
    */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    // A marker without a TXID would make a restore request the latest
+    // database instead of a captured point in time, so refuse to save one
+    // when replication is disabled, the replica is empty, or the LTX read
+    // failed.
+    $txid = trim($this->status->getReplicaLatestTxid() ?? '');
+    if ($txid === '') {
+      $form_state->setErrorByName('', $this->t('Cannot capture a marker: no replica TXID is available (replication is disabled, the replica is empty, or it could not be read).'));
+      return;
+    }
+    $form_state->set('replica_txid', $txid);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    // See buildForm(): the marker pin must be the LTX-space TXID.
-    $txid = $this->status->getReplicaLatestTxid() ?? '';
+    // See buildForm(): the marker pin must be the LTX-space TXID. Use the
+    // value validated in validateForm() so it is guaranteed non-empty.
+    $txid = (string) $form_state->get('replica_txid');
     $id = $this->markers->create([
       'label' => (string) $form_state->getValue('label'),
       'description' => (string) $form_state->getValue('description'),
@@ -107,7 +124,7 @@ class MarkerForm extends FormBase {
     ]);
     $this->messenger()->addStatus($this->t('Marker captured (id=@id, txid=@txid).', [
       '@id' => $id,
-      '@txid' => $txid !== '' ? $txid : '?',
+      '@txid' => $txid,
     ]));
     $form_state->setRedirectUrl(Url::fromRoute('drx_litestream.markers'));
   }
