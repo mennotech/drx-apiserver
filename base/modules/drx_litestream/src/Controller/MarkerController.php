@@ -125,6 +125,11 @@ class MarkerController extends ControllerBase {
     $resp = new JsonResponse($payload);
     $resp->setEncodingOptions(JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $m['label']);
+    // preg_replace() returns NULL on error and an empty label yields '';
+    // fall back to the marker id so the download always has a valid name.
+    if ($name === NULL || $name === '') {
+      $name = (string) $id;
+    }
     $resp->headers->set('Content-Disposition', sprintf('attachment; filename="marker-%s.json"', $name));
     return $resp;
   }

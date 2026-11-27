@@ -44,6 +44,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `drx_litestream` marker export now falls back to the marker id for the
+  `Content-Disposition` filename when the sanitised label is empty (or
+  `preg_replace()` fails), instead of producing `marker-.json`.
 - `drx_litestream` snapshot verification now falls back to the daemon's
   `replicated_txid` (from `litestream sync -wait`) when `litestream ltx`
   cannot enumerate remote LTX files in the current CLI environment
