@@ -44,6 +44,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- `DRX_S3_FORCE_PATH_STYLE=0` is now honoured by the bootstrap S3 probe
+  (`base/lib/s3_probe.php`) and the generated s3fs settings
+  (`base/lib/settings.sh`). `getenv() ?: ''` discarded the falsy `"0"`, so
+  a custom endpoint was forced to path-style while Litestream used
+  virtual-hosted addressing.
 - The `drx_litestream` marker form now rejects capture when no replica
   TXID is available (replication disabled, empty replica, or LTX read
   failure) instead of saving a "successful" marker with an empty TXID

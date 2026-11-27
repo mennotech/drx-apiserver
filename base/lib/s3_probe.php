@@ -16,7 +16,8 @@ $region    = getenv('DRX_S3_REGION')              ?: 'us-east-1';
 $endpoint  = getenv('DRX_S3_ENDPOINT')            ?: '';
 $accessKey = getenv('DRX_S3_ACCESS_KEY_ID')       ?: '';
 $secretKey = getenv('DRX_S3_SECRET_ACCESS_KEY')   ?: '';
-$forcePath = strtolower(getenv('DRX_S3_FORCE_PATH_STYLE') ?: '');
+// Cast (not `?:`) so an explicit "0" survives; PHP treats "0" as falsy.
+$forcePath = strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE'));
 
 if ($bucket === '' || $accessKey === '' || $secretKey === '') {
     fwrite(STDERR, "s3_probe: missing required env (bucket/access-key/secret)\n");

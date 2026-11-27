@@ -55,7 +55,8 @@ if (getenv('DRX_S3_REQUIRED') !== '0') {
   // endpoint is set (MinIO and most self-hosted S3 backends require
   // it). This matches base/lib/litestream.sh and base/lib/s3_probe.php
   // so all three S3 consumers agree on addressing mode.
-  $drx_s3_force_path = strtolower((string) (getenv('DRX_S3_FORCE_PATH_STYLE') ?: ''));
+  // Cast (not `?:`) so an explicit "0" survives; PHP treats "0" as falsy.
+  $drx_s3_force_path = strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE'));
   if ($drx_s3_force_path === '') {
     $config['s3fs.settings']['use_path_style_endpoint'] = getenv('DRX_S3_ENDPOINT') ? TRUE : FALSE;
   }
