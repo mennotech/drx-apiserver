@@ -33,11 +33,30 @@ if ($forcePath === '') {
 }
 
 if ($endpoint !== '') {
-    $parts  = parse_url($endpoint);
-    $scheme = $parts['scheme'] ?? 'https';
-    $host   = $parts['host']   ?? '';
-    if ($host === '') {
+    // Endpoint validation rules are intentionally duplicated here and in
+    // the PHP writers (they must stay identical, or a bad endpoint can pass
+    // this bootstrap probe and then fail at runtime):
+    //   - base/modules/drx_s3_journal/src/Service/JournalWriter.php
+    //   - base/modules/drx_litestream/src/Service/SnapshotManifestWriter.php
+    //   - base/modules/drx_litestream/src/Service/RemoteReplica.php
+    // This script is standalone (no autoloader, runs before Drupal) and the
+    // writers live in separate modules, so there is no shared helper yet.
+    // If these rules change again, consider consolidating them into one
+    // shared implementation instead of updating four copies.
+    $parts  = parse_url(rtrim($endpoint, '/'));
+    if (!is_array($parts) || empty($parts['host'])) {
         fwrite(STDERR, "s3_probe: could not parse DRX_S3_ENDPOINT='$endpoint'\n");
+        exit(2);
+    }
+    $scheme = $parts['scheme'] ?? 'https';
+    $host   = $parts['host'];
+    $epPath = (string) ($parts['path'] ?? '');
+    if ($epPath !== '' && $epPath !== '/') {
+        fwrite(STDERR, "s3_probe: DRX_S3_ENDPOINT must not include a path component ('$endpoint')\n");
+        exit(2);
+    }
+    if (isset($parts['query']) || isset($parts['fragment'])) {
+        fwrite(STDERR, "s3_probe: DRX_S3_ENDPOINT must not include query or fragment components ('$endpoint')\n");
         exit(2);
     }
     $hostPort = isset($parts['port']) ? "$host:{$parts['port']}" : $host;

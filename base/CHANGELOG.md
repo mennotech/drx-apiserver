@@ -44,6 +44,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- The bootstrap S3 probe (`base/lib/s3_probe.php`) now rejects a
+  `DRX_S3_ENDPOINT` containing a path, query, or fragment, exactly like the
+  runtime S3 writers (`JournalWriter`, `SnapshotManifestWriter`,
+  `RemoteReplica`). Previously the probe silently discarded those parts and
+  passed, so bootstrap succeeded and file mutations then failed at runtime.
+  The rules are duplicated by design (the probe is standalone); a comment
+  notes the copies must stay in sync and may be consolidated later.
 - `drx_s3_journal` bulk file deletes are now journaled and deleted one file
   at a time. Journaling the whole batch first meant a journal failure on a
   later file left immutable `delete` events for earlier files that were
