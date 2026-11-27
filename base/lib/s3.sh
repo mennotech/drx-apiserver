@@ -51,6 +51,14 @@ drx::s3::bridge_litestream() {
     drx::s3::required || return 0
     [ -n "${DRX_S3_BUCKET}" ] || return 0
 
+    # Only the SQLite driver is replicated. With mysql/pgsql the S3 file
+    # storage stays active, but Litestream must not restore/replicate an
+    # unrelated SQLite path.
+    if [ "${DRUPAL_DB_DRIVER}" != "sqlite" ]; then
+        drx::log "litestream: DRUPAL_DB_DRIVER=${DRUPAL_DB_DRIVER}; replication disabled (sqlite only)"
+        return 0
+    fi
+
     local expected_replica_url="s3://${DRX_S3_BUCKET}/${DRX_S3_PREFIX_LITESTREAM}"
 
     DRX_LITESTREAM_ENABLED="1"

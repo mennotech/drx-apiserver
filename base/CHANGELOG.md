@@ -44,6 +44,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- Litestream is now enabled only for `DRUPAL_DB_DRIVER=sqlite`. With
+  `mysql`/`pgsql` and S3 required, bootstrap no longer restores and
+  replicates an unrelated SQLite path (S3 file storage stays active), and
+  `LitestreamStatus::isEnabled()` no longer reports replication for an
+  unsupported driver.
 - Litestream `if-empty` restores now use `-force` instead of
   `-if-db-not-exists`, so an existing but empty SQLite file (no tables)
   no longer makes bootstrap skip the restore and install a new site; a

@@ -33,6 +33,11 @@ class LitestreamStatus {
    * `init.sh`.
    */
   public function isEnabled(): bool {
+    // Only the SQLite driver is replicated (matches bootstrap in
+    // base/lib/s3.sh), regardless of the S3 settings.
+    if ((string) (getenv('DRUPAL_DB_DRIVER') ?: 'sqlite') !== 'sqlite') {
+      return FALSE;
+    }
     if (getenv('DRX_LITESTREAM_ENABLED') === '1') {
       return TRUE;
     }
