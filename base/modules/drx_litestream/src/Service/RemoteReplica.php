@@ -135,7 +135,10 @@ class RemoteReplica {
     }
 
     // Path-style is required for custom endpoints (MinIO etc.); virtual-
-    // hosted style is the default for AWS S3.
+    // hosted style is the default for AWS S3 unless
+    // DRX_S3_FORCE_PATH_STYLE is explicitly enabled (e.g. dotted bucket
+    // names over HTTPS).
+    $forcePath = in_array(strtolower((string) getenv('DRX_S3_FORCE_PATH_STYLE')), ['1', 'true', 'yes'], TRUE);
     if ($endpoint !== '') {
       $base = rtrim($endpoint, '/');
       $epParts = parse_url($base);
@@ -150,6 +153,11 @@ class RemoteReplica {
         throw new \RuntimeException('DRX_S3_ENDPOINT must not include query or fragment components');
       }
       $host = ($epParts['host'] ?? '') . (isset($epParts['port']) ? ':' . $epParts['port'] : '');
+      $canonicalUri = '/' . $bucket . '/';
+    }
+    elseif ($forcePath) {
+      $base = "https://s3.{$region}.amazonaws.com";
+      $host = "s3.{$region}.amazonaws.com";
       $canonicalUri = '/' . $bucket . '/';
     }
     else {
