@@ -96,11 +96,13 @@ drx::s3::ensure() {
 
 # Enable the s3fs module after install so Drupal's stream-wrapper takeover
 # settings (declared in settings.php) have a backing implementation. No-op
-# when S3 is bypassed.
+# when S3 is bypassed. Fatal when S3 is required: continuing would leave
+# files on local storage that disappears when the container is recreated.
+# Drush's own output is preserved for diagnostics; an already-enabled module
+# is a successful no-op.
 drx::s3::enable_module() {
     drx::s3::required || return 0
     drx::log "s3: enabling s3fs module"
-    if ! drx::drush pm:enable --yes s3fs >/dev/null 2>&1; then
-        drx::warn "s3: could not enable s3fs module (may already be enabled or unavailable)"
-    fi
+    drx::drush pm:enable --yes s3fs || drx::die \
+        "S3 is required but the s3fs module could not be enabled; refusing to continue with local file storage."
 }

@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   to match the originating caller rather than the gateway's address.
 
 ### Fixed
+- When S3 is required (`DRX_S3_REQUIRED=1`), a failure to enable the
+  `s3fs` module now aborts bootstrap (with Drush's output preserved)
+  instead of warning and continuing on local file storage that is lost
+  when the container is recreated.
 - Litestream is now enabled only for `DRUPAL_DB_DRIVER=sqlite`. With
   `mysql`/`pgsql` and S3 required, bootstrap no longer restores and
   replicates an unrelated SQLite path (S3 file storage stays active), and
